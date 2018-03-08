@@ -7,7 +7,7 @@
 class STOCMessage
 {
 public:
-	enum { HEADER_LENGTH = 3, MAX_MESSAGE_LENGTH = 512 };
+	enum { HEADER_LENGTH = 3, MAX_MESSAGE_LENGTH = 1024 };
 	STOCMessage(int msgType) :
 		type(msgType),
 		bm(tmpData, MAX_MESSAGE_LENGTH)
@@ -43,7 +43,7 @@ private:
 	uint16_t length;
 	uint8_t type;
 	char data[MAX_MESSAGE_LENGTH];
-	char tmpData[MAX_MESSAGE_LENGTH];
+	char tmpData[MAX_MESSAGE_LENGTH]; // Optimize this into a single value
 	BufferManipulator bm;
 };
 
