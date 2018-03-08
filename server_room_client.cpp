@@ -110,9 +110,16 @@ void ServerRoomClient::OnJoinGame(BufferManipulator* bm)
 	bm->Forward(8);
 
 	pass = su::u16tos(std::u16string((const char16_t*)bm->GetCurrentBuffer().first));
-
+	
+	//room->AddPlayer();
 	room->AddToLobby(shared_from_this());
 	auth = true;
+}
+
+void ServerRoomClient::OnChat(BufferManipulator* bm)
+{
+	std::string chatMsg = su::u16tos(std::u16string((const char16_t*)bm->GetCurrentBuffer().first));
+	room->Chat(shared_from_this(), chatMsg);
 }
 
 ServerRoomClient::ServerRoomClient(asio::ip::tcp::socket tmpSocket, ServerRoom* room) :
@@ -124,7 +131,7 @@ ServerRoomClient::ServerRoomClient(asio::ip::tcp::socket tmpSocket, ServerRoom* 
 ServerRoomClient::~ServerRoomClient()
 {}
 
-std::string ServerRoomClient::WhoAmI()
+std::string ServerRoomClient::WhoAmI() const
 {
 	std::ostringstream out;
 	asio::ip::tcp::endpoint endpoint = socket.remote_endpoint();
@@ -140,9 +147,19 @@ std::string ServerRoomClient::WhoAmI()
 	return out.str();
 }
 
-std::string ServerRoomClient::GetName()
+std::string ServerRoomClient::GetName() const
 {
 	return name;
+}
+
+int ServerRoomClient::GetType(bool getHost) const
+{
+	uint8_t ret;
+	ret = (type == ServerRoomClient::TYPE_PLAYER) ? pos : NETPLAYER_TYPE_OBSERVER;
+	if(getHost)
+		ret += (shared_from_this() == room->GetHost()) ? 0x10 : 0x0;
+
+	return ret;
 }
 
 void ServerRoomClient::Connect()

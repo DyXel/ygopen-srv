@@ -33,8 +33,11 @@ void ServerRoom::SendToAllExcept(Client client, STOCMessage msg)
 
 	for(auto& c : observers)
 	{
-		c->outgoingMsgs.push_back(msg);
-		c->Flush();
+		if(c != client)
+		{
+			c->outgoingMsgs.push_back(msg);
+			c->Flush();
+		}
 	}
 
 	for(auto& c : players)
@@ -45,6 +48,11 @@ void ServerRoom::SendToAllExcept(Client client, STOCMessage msg)
 			c.second->Flush();
 		}
 	}
+}
+
+Client ServerRoom::GetHost() const
+{
+	return hostClient;
 }
 
 ServerRoom::ServerRoom() :
@@ -62,7 +70,6 @@ ServerRoom::ServerRoom() :
 	duelInfo.start_hand = 5;
 	duelInfo.draw_count = 1;
 	duelInfo.time_limit = 240;
-
 }
 
 void ServerRoom::Join(Client client)
@@ -105,7 +112,7 @@ void ServerRoom::Leave(Client client)
 	clients.erase(client);
 }
 
-int ServerRoom::GetPlayerPos()
+int ServerRoom::GetPlayerPos() const
 {
 	//               < (isTag) ? 4 : 2
 	for(int i = 0; i < 2; ++i)
@@ -178,6 +185,21 @@ void ServerRoom::AddToLobby(Client client)
 	}
 }
 
+void ServerRoom::Chat(Client client, std::string& chatMsg)
+{
+	STOCMessage msg(STOC_CHAT);
+
+	ygo::STOC_Chat s = {};
+	s.player = client->GetType(false);
+	std::u16string tmpStr = su::stou16(chatMsg);
+	for(int i = 0; i < (int)tmpStr.length(); ++i)
+		s.msg[i] = tmpStr[i];
+
+	msg.GetBM()->Write(s);
+	SendToAllExcept(client, msg);
+}
+
+
 void ServerRoom::SendJoinMsg(Client client)
 {
 	ygo::STOC_JoinGame s = {};
@@ -191,13 +213,9 @@ void ServerRoom::SendJoinMsg(Client client)
 
 void ServerRoom::SendTypeChange(Client client)
 {
-	STOCMessage msg(STOC_HS_PLAYER_CHANGE);
+	STOCMessage msg(STOC_TYPE_CHANGE);
 	//ygo::STOC_TypeChange s = {};
-	uint8_t type;
-	type = (client->type == ServerRoomClient::TYPE_PLAYER) ? client->pos : NETPLAYER_TYPE_OBSERVER;
-	type += (client == hostClient) ? 0x10 : 0x0;
-	std::printf("this player type: 0x%X\n", type);
-	msg.GetBM()->Write(type);
+	msg.GetBM()->Write<uint8_t>(client->GetType(true));
 
 	SendTo(client, msg);
 }

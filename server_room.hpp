@@ -21,18 +21,24 @@ class ServerRoom
 	std::map<int, bool> players_ready;
 	Client hostClient;
 
+	int GetPlayerPos() const;
+
 	void SendTo(Client client, STOCMessage msg);
 	void SendToAll(STOCMessage msg);
 	void SendToAllExcept(Client client, STOCMessage msg);
 public:
 	enum { STATE_LOBBY, STATE_DUEL, STATE_SIDE};
 
+	Client GetHost() const;
+
 	ServerRoom();
 	void Join(Client client);
 	void Leave(Client client);
 
-	int GetPlayerPos();
+	void AddPlayer(Client client);
+	void AddToGame(Client client);
 	void AddToLobby(Client client);
+	void Chat(Client client, std::string& chatMsg);
 
 	void SendJoinMsg(Client client);
 	void SendTypeChange(Client client);

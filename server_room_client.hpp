@@ -20,6 +20,7 @@ class ServerRoomClient : public std::enable_shared_from_this<ServerRoomClient>
 	void ParseMsg();
 	void OnPlayerInfo(BufferManipulator* bm);
 	void OnJoinGame(BufferManipulator* bm);
+	void OnChat(BufferManipulator* bm);
 
 	asio::ip::tcp::socket socket;
 	ServerRoom* room;
@@ -33,13 +34,14 @@ class ServerRoomClient : public std::enable_shared_from_this<ServerRoomClient>
 public:
 	enum { TYPE_PLAYER, TYPE_SPECTATOR };
 	int type; // Player or Spectator?
-	int pos; // Player position
+	int pos; // Player position, index start from 0
 
 	ServerRoomClient(asio::ip::tcp::socket, ServerRoom*);
 	~ServerRoomClient();
 
-	std::string WhoAmI();
-	std::string GetName();
+	std::string WhoAmI() const; // TODO: This shouldn't be needed on future versions
+	std::string GetName() const;
+	int GetType(bool getHost) const;
 
 	void Connect();
 	void Disconnect();
