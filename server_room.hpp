@@ -39,6 +39,7 @@ public:
 	void AddToGame(Client client);
 	void AddToLobby(Client client);
 	void Chat(Client client, std::string& chatMsg);
+	void Ready(Client client, bool ready);
 
 	void SendJoinMsg(Client client);
 	void SendTypeChange(Client client);

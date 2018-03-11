@@ -21,6 +21,8 @@ class ServerRoomClient : public std::enable_shared_from_this<ServerRoomClient>
 	void OnPlayerInfo(BufferManipulator* bm);
 	void OnJoinGame(BufferManipulator* bm);
 	void OnChat(BufferManipulator* bm);
+	void OnReady(BufferManipulator* bm);
+	void OnNotReady(BufferManipulator* bm);
 
 	asio::ip::tcp::socket socket;
 	ServerRoom* room;

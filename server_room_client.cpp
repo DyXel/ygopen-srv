@@ -89,8 +89,18 @@ void ServerRoomClient::ParseMsg()
 		case CTOS_CHAT:
 			OnChat(&bm);
 		break;
+		case CTOS_UPDATE_DECK:
+			//TODO: Add banlist support
+		break;
+		case CTOS_HS_READY:
+			OnReady(&bm);
+		break;
+		case CTOS_HS_NOTREADY:
+			OnNotReady(&bm);
+		break;
 		default:
-			std::cout << "Unhandled message: " << msgType << std::endl;
+			std::cout << "Unhandled message: " << (int)msgType << std::endl;
+			room->Leave(shared_from_this());
 		break;
 	}
 }
@@ -120,6 +130,16 @@ void ServerRoomClient::OnChat(BufferManipulator* bm)
 {
 	std::string chatMsg = su::u16tos(std::u16string((const char16_t*)bm->GetCurrentBuffer().first));
 	room->Chat(shared_from_this(), chatMsg);
+}
+
+void ServerRoomClient::OnReady(BufferManipulator* bm)
+{
+	room->Ready(shared_from_this(), true);
+}
+
+void ServerRoomClient::OnNotReady(BufferManipulator* bm)
+{
+	room->Ready(shared_from_this(), false);
 }
 
 ServerRoomClient::ServerRoomClient(asio::ip::tcp::socket tmpSocket, ServerRoom* room) :

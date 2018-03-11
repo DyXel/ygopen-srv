@@ -199,6 +199,21 @@ void ServerRoom::Chat(Client client, std::string& chatMsg)
 	SendToAllExcept(client, msg);
 }
 
+void ServerRoom::Ready(Client client, bool ready)
+{
+	if(client->type == ServerRoomClient::TYPE_SPECTATOR)
+		return;
+
+	//TODO: Check deck here
+
+	players_ready[client->pos] = ready;
+
+	STOCMessage msg(STOC_HS_PLAYER_CHANGE);
+	uint8_t val = client->GetType(false) << 4;
+	val += (ready) ? PLAYERCHANGE_READY : PLAYERCHANGE_NOTREADY;
+	msg.GetBM()->Write(val);
+	SendToAll(msg);
+}
 
 void ServerRoom::SendJoinMsg(Client client)
 {

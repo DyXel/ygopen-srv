@@ -50,7 +50,7 @@ private:
 class CTOSMessage
 {
 public:
-	enum { HEADER_LENGTH = 3, MAX_MESSAGE_LENGTH = 512 };
+	enum { HEADER_LENGTH = 3, MAX_MESSAGE_LENGTH = 1024 };
 	
 	char* GetDataPtr()
 	{
@@ -75,16 +75,11 @@ public:
 
 		length = bm.Read<uint16_t>();
 		length--; // Not sure why the client adds 1 to the length
-		if(length < HEADER_LENGTH || length > MAX_MESSAGE_LENGTH)
-		{
-			std::cout << "Invalid Message Length: " << length << std::endl;
-			return false;
-		}
 
 		type = bm.Read<uint8_t>();
 		if(type == 0)
 		{
-			std::cout << "Invalid Message Type" << type << std::endl;
+			std::cout << "Invalid Message Type" << (int)type << std::endl;
 			return false;
 		}
 
