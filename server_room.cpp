@@ -3,6 +3,16 @@
 #include <iostream>
 #include "string_utils.hpp"
 
+void ServerRoom::SendSpectatorNumber(Client except)
+{
+	STOCMessage msg(STOC_HS_WATCH_CHANGE);
+	msg.GetBM()->Write<uint16_t>(spectators.size());
+	if(except != nullptr)
+		SendToAllExcept(except, msg);
+	else
+		SendToAll(msg);
+}
+
 void ServerRoom::SendTo(Client client, STOCMessage msg)
 {
 	msg.Encode();
@@ -14,7 +24,7 @@ void ServerRoom::SendToAll(STOCMessage msg)
 {
 	msg.Encode();
 
-	for(auto& c : observers)
+	for(auto& c : spectators)
 	{
 		c->outgoingMsgs.push_back(msg);
 		c->Flush();
@@ -31,7 +41,7 @@ void ServerRoom::SendToAllExcept(Client client, STOCMessage msg)
 {
 	msg.Encode();
 
-	for(auto& c : observers)
+	for(auto& c : spectators)
 	{
 		if(c != client)
 		{
@@ -85,13 +95,10 @@ void ServerRoom::Leave(Client client)
 	if(clients.find(client) == clients.end())
 		return;
 	
-	if(observers.find(client) != observers.end())
+	if(spectators.find(client) != spectators.end())
 	{
-		observers.erase(client);
-
-		STOCMessage msg(STOC_HS_WATCH_CHANGE);
-		msg.GetBM()->Write<uint16_t>(observers.size());
-		SendToAllExcept(client, msg);
+		spectators.erase(client);
+		SendSpectatorNumber(client);
 	}
 	else
 	{
@@ -136,11 +143,9 @@ void ServerRoom::AddToLobby(Client client)
 	{
 		client->type = ServerRoomClient::TYPE_SPECTATOR;
 		client->pos = pos;
-		observers.insert(client);
+		spectators.insert(client);
 
-		STOCMessage msg(STOC_HS_WATCH_CHANGE);
-		msg.GetBM()->Write<uint16_t>(observers.size());
-		SendToAllExcept(client, msg);
+		SendSpectatorNumber(client);
 	}
 	else
 	{
@@ -177,10 +182,10 @@ void ServerRoom::AddToLobby(Client client)
 		//TODO: Send ready status if player is ready.
 	}
 
-	if(observers.size() > 0)
+	if(spectators.size() > 0)
 	{
 		STOCMessage msg(STOC_HS_WATCH_CHANGE);
-		msg.GetBM()->Write<uint16_t>(observers.size());
+		msg.GetBM()->Write<uint16_t>(spectators.size());
 		SendTo(client, msg);
 	}
 }
@@ -199,8 +204,70 @@ void ServerRoom::Chat(Client client, std::string& chatMsg)
 	SendToAllExcept(client, msg);
 }
 
+void ServerRoom::MoveToDuelist(Client client)
+{
+	if(state != ServerRoom::STATE_LOBBY)
+		return;
+	if(client->type == ServerRoomClient::TYPE_PLAYER) // TODO: delete this when supporting Tag/Relay
+		return;
+	//                   (istag) ? 4 : 2)
+	if(players.size() >= 2)
+		return;
+
+	int pos = GetPlayerPos();
+	if(pos == -1) // This shouldn't be needed
+		return;
+
+	players.insert(std::make_pair(pos, client));
+	players_ready.insert(std::make_pair(pos, false));
+	spectators.erase(client);
+
+	STOCMessage msg(STOC_HS_PLAYER_ENTER);
+	ygo::STOC_HS_PlayerEnter s = {};
+	std::u16string tmpStr = su::stou16(client->GetName());
+	for(int i = 0; i < (int)tmpStr.length(); ++i)
+		s.name[i] = tmpStr[i];
+	s.pos = pos;
+	msg.GetBM()->Write(s);
+	SendToAll(msg);
+
+	client->type = ServerRoomClient::TYPE_PLAYER;
+	client->pos  = pos;
+	SendTypeChange(client);
+
+	SendSpectatorNumber();
+}
+
+void ServerRoom::MoveToSpectator(Client client)
+{
+	if(state != ServerRoom::STATE_LOBBY)
+		return;
+	if(client->type == ServerRoomClient::TYPE_SPECTATOR)
+		return;
+	//if(players_ready[client->pos])
+	//	return;
+
+	players.erase(client->pos);
+	players_ready.erase(client->pos);
+	spectators.insert(client);
+
+	STOCMessage msg(STOC_HS_PLAYER_CHANGE);
+	uint8_t val = client->GetType(false) << 4;
+	val += NETPLAYER_TYPE_OBSERVER;
+	msg.GetBM()->Write(val);
+	SendToAll(msg);
+
+	client->type = ServerRoomClient::TYPE_SPECTATOR;
+	client->pos  = -1;
+	SendTypeChange(client);
+
+	SendSpectatorNumber();
+}
+
 void ServerRoom::Ready(Client client, bool ready)
 {
+	if(state != ServerRoom::STATE_LOBBY)
+		return;
 	if(client->type == ServerRoomClient::TYPE_SPECTATOR)
 		return;
 

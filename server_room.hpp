@@ -16,13 +16,14 @@ class ServerRoom
 	ygo::HostInfo duelInfo;
 
 	std::set<Client> clients;
-	std::set<Client> observers;
+	std::set<Client> spectators;
 	std::map<int, Client> players;
 	std::map<int, bool> players_ready;
 	Client hostClient;
 
 	int GetPlayerPos() const;
 
+	void SendSpectatorNumber(Client except = nullptr);
 	void SendTo(Client client, STOCMessage msg);
 	void SendToAll(STOCMessage msg);
 	void SendToAllExcept(Client client, STOCMessage msg);
@@ -39,6 +40,8 @@ public:
 	void AddToGame(Client client);
 	void AddToLobby(Client client);
 	void Chat(Client client, std::string& chatMsg);
+	void MoveToDuelist(Client client);
+	void MoveToSpectator(Client client);
 	void Ready(Client client, bool ready);
 
 	void SendJoinMsg(Client client);

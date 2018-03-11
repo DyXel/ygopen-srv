@@ -87,11 +87,17 @@ bool ServerRoomClient::ParseMsg()
 		case CTOS_UPDATE_DECK:
 			//TODO: Add banlist support
 		break;
+		case CTOS_HS_TODUELIST:
+			OnMoveToDuelist();
+		break;
+		case CTOS_HS_TOOBSERVER:
+			OnMoveToSpectator();
+		break;
 		case CTOS_HS_READY:
-			OnReady(&bm);
+			OnReady();
 		break;
 		case CTOS_HS_NOTREADY:
-			OnNotReady(&bm);
+			OnNotReady();
 		break;
 		default:
 			std::cout << "Unhandled message: " << (int)msgType << std::endl;
@@ -129,12 +135,22 @@ void ServerRoomClient::OnChat(BufferManipulator* bm)
 	room->Chat(shared_from_this(), chatMsg);
 }
 
-void ServerRoomClient::OnReady(BufferManipulator* bm)
+void ServerRoomClient::OnMoveToDuelist()
+{
+	room->MoveToDuelist(shared_from_this());
+}
+
+void ServerRoomClient::OnMoveToSpectator()
+{
+	room->MoveToSpectator(shared_from_this());
+}
+
+void ServerRoomClient::OnReady()
 {
 	room->Ready(shared_from_this(), true);
 }
 
-void ServerRoomClient::OnNotReady(BufferManipulator* bm)
+void ServerRoomClient::OnNotReady()
 {
 	room->Ready(shared_from_this(), false);
 }
