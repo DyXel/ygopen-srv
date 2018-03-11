@@ -24,15 +24,10 @@ void ServerRoomClient::DoReadBody()
 	asio::async_read(socket, asio::buffer(receivedMsg.GetDataPtr(), receivedMsg.GetMsgLength()),
 	[this, self](std::error_code ec, std::size_t)
 	{
-		if(!ec)
-		{
-			ParseMsg();
+		if(!ec && ParseMsg())
 			DoReadHeader();
-		}
 		else
-		{
 			room->Leave(shared_from_this());
-		}
 	});
 }
 
@@ -58,7 +53,7 @@ void ServerRoomClient::DoWrite()
 	});
 }
 
-void ServerRoomClient::ParseMsg()
+bool ServerRoomClient::ParseMsg()
 {
 	BufferManipulator bm(receivedMsg.GetDataPtr(), receivedMsg.GetMsgLength());
 	uint8_t msgType = receivedMsg.GetMsgType();
@@ -68,20 +63,20 @@ void ServerRoomClient::ParseMsg()
 	{
 		case CTOS_PLAYER_INFO:
 			OnPlayerInfo(&bm);
-		return;
+		return true;
 		case CTOS_JOIN_GAME:
 			OnJoinGame(&bm);
-		return;
+		return true;
 		case CTOS_CREATE_GAME:
 			//OnCreateGame();
 			auth = true;
-		return;
+		return true;
 	}
 
 	if(auth == false)
 	{
 		std::cout << "Received unexpected package before auth" << std::endl;
-		return;
+		return false;
 	}
 
 	switch(msgType)
@@ -100,9 +95,11 @@ void ServerRoomClient::ParseMsg()
 		break;
 		default:
 			std::cout << "Unhandled message: " << (int)msgType << std::endl;
-			room->Leave(shared_from_this());
+			return false;
 		break;
 	}
+
+	return true;
 }
 
 void ServerRoomClient::OnPlayerInfo(BufferManipulator* bm)
@@ -149,7 +146,9 @@ ServerRoomClient::ServerRoomClient(asio::ip::tcp::socket tmpSocket, ServerRoom* 
 {}
 
 ServerRoomClient::~ServerRoomClient()
-{}
+{
+	std::cout << "SRC: Calling destructor" << std::endl;
+}
 
 std::string ServerRoomClient::WhoAmI() const
 {
