@@ -155,10 +155,18 @@ void ServerRoom::Leave(Client client)
 		SendToAllExcept(client, msg);
 	}
 
-	// TODO: properly handle host leaving
-	// maybe choose a new host or close connection?
 	if(hostClient == client)
-		hostClient = nullptr;
+	{
+		if(players.begin() != players.end())
+			hostClient = players.begin()->second;
+		else if(spectators.begin() != spectators.end())
+			hostClient = *spectators.begin();
+		else
+			hostClient = nullptr;
+
+		if(hostClient != nullptr)
+			SendTypeChange(hostClient);
+	}
 
 	client->Disconnect();
 	clients.erase(client);
@@ -353,8 +361,6 @@ void ServerRoom::SendJoinMsg(Client client)
 void ServerRoom::SendTypeChange(Client client)
 {
 	STOCMessage msg(STOC_TYPE_CHANGE);
-	//ygo::STOC_TypeChange s = {};
 	msg.GetBM()->Write<uint8_t>(client->GetType(true));
-
 	SendTo(client, msg);
 }
