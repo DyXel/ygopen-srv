@@ -40,9 +40,9 @@ public:
 	void Join(Client client);
 	void Leave(Client client);
 
-	void AddPlayer(Client client);
-	void AddToGame(Client client);
+	void AddClient(Client client);
 	void AddToLobby(Client client);
+	void AddToGame(Client client);
 	void Chat(Client client, std::string& chatMsg);
 	void MoveToDuelist(Client client);
 	void MoveToSpectator(Client client);

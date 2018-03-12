@@ -173,6 +173,20 @@ void ServerRoom::Leave(Client client)
 }
 
 
+void ServerRoom::AddPlayer(Client client)
+{
+	switch(state)
+	{
+		case STATE_LOBBY:
+			AddToLoby(client);
+		break;
+		case STATE_GAME:
+		case STATE_SIDE:
+			AddToGame(client);
+		break;
+	}
+}
+
 void ServerRoom::AddToLobby(Client client)
 {
 	// The first client to enter will be the host
@@ -236,6 +250,12 @@ void ServerRoom::AddToLobby(Client client)
 		msg.GetBM()->Write<uint16_t>(spectators.size());
 		SendTo(client, msg);
 	}
+}
+
+void ServerRoom::AddToGame(Client client)
+{
+	//TODO
+	Leave(client);
 }
 
 void ServerRoom::Chat(Client client, std::string& chatMsg)

@@ -124,8 +124,7 @@ void ServerRoomClient::OnJoinGame(BufferManipulator* bm)
 
 	pass = su::u16tos(std::u16string((const char16_t*)bm->GetCurrentBuffer().first));
 	
-	//room->AddPlayer();
-	room->AddToLobby(shared_from_this());
+	room->AddPlayer(shared_from_this());
 	auth = true;
 }
 
