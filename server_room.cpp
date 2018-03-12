@@ -3,6 +3,51 @@
 #include <iostream>
 #include "string_utils.hpp"
 
+bool ServerRoom::IsTag() const
+{
+	return duelInfo.mode == 0x02;
+}
+
+bool ServerRoom::IsRelay() const
+{
+	return duelInfo.mode == 0x03;
+}
+
+int ServerRoom::GetMaxPlayers() const
+{
+	if(IsTag())
+		return 4;
+	else if(IsRelay())
+		return 6;
+	return 2;
+}
+
+int ServerRoom::GetNewPlayerPos(int except) const
+{
+	assert(!((int)players.size() == GetMaxPlayers()));
+
+	const int maxPlayers = GetMaxPlayers();
+
+	if(except == -1)
+	{
+		for(int i = 0; i < maxPlayers; ++i)
+		{
+			if(players.count(i) == 0)
+				return i;
+		}
+	}
+	else
+	{
+		int pos = except;
+		while(players.count(pos) == 1)
+			pos = (pos + 1) % maxPlayers;
+		return pos;
+	}
+
+	// UNREACHABLE
+	return -1;
+}
+
 void ServerRoom::SendSpectatorNumber(Client except)
 {
 	STOCMessage msg(STOC_HS_WATCH_CHANGE);
@@ -72,7 +117,7 @@ ServerRoom::ServerRoom() :
 	// Defaults.
 	duelInfo.lflist = 0;
 	duelInfo.rule = 2;
-	duelInfo.mode = 0;
+	duelInfo.mode = 0x02;
 	duelInfo.duel_rule = 4;
 	duelInfo.no_check_deck = false;
 	duelInfo.no_shuffle_deck = false;
@@ -119,17 +164,6 @@ void ServerRoom::Leave(Client client)
 	clients.erase(client);
 }
 
-int ServerRoom::GetPlayerPos() const
-{
-	//               < (isTag) ? 4 : 2
-	for(int i = 0; i < 2; ++i)
-	{
-		if(players.count(i) == 0)
-			return i;
-	}
-
-	return -1;
-}
 
 void ServerRoom::AddToLobby(Client client)
 {
@@ -137,18 +171,17 @@ void ServerRoom::AddToLobby(Client client)
 	if(hostClient == nullptr)
 		hostClient = client;
 
-	int pos = GetPlayerPos();
-	//if(players.size() >= (isTag) ? 4 : 2)
-	if(pos == -1)
+	if((int)players.size() == GetMaxPlayers())
 	{
 		client->type = ServerRoomClient::TYPE_SPECTATOR;
-		client->pos = pos;
+		client->pos = -1;
 		spectators.insert(client);
 
 		SendSpectatorNumber(client);
 	}
 	else
 	{
+		int pos = GetNewPlayerPos();
 		client->type = ServerRoomClient::TYPE_PLAYER;
 		client->pos = pos;
 		players.insert(std::make_pair(pos, client));
@@ -178,8 +211,15 @@ void ServerRoom::AddToLobby(Client client)
 		s.pos = c.first;
 		msg.GetBM()->Write(s);
 		SendTo(client, msg);
-
-		//TODO: Send ready status if player is ready.
+		
+		if(players_ready[c.first])
+		{
+			STOCMessage msg(STOC_HS_PLAYER_CHANGE);
+			uint8_t val = client->GetType(false) << 4;
+			val += PLAYERCHANGE_READY;
+			msg.GetBM()->Write(val);
+			SendTo(client, msg);
+		}
 	}
 
 	if(spectators.size() > 0)
@@ -208,34 +248,51 @@ void ServerRoom::MoveToDuelist(Client client)
 {
 	if(state != ServerRoom::STATE_LOBBY)
 		return;
-	if(client->type == ServerRoomClient::TYPE_PLAYER) // TODO: delete this when supporting Tag/Relay
-		return;
-	//                   (istag) ? 4 : 2)
-	if(players.size() >= 2)
+	if((int)players.size() == GetMaxPlayers())
 		return;
 
-	int pos = GetPlayerPos();
-	if(pos == -1) // This shouldn't be needed
-		return;
+	if(client->type == ServerRoomClient::TYPE_PLAYER)
+	{
+		int pos = GetNewPlayerPos(client->pos);
+		if(client->pos == pos)
+			return;
 
-	players.insert(std::make_pair(pos, client));
-	players_ready.insert(std::make_pair(pos, false));
-	spectators.erase(client);
+		players.erase(client->pos);
+		players_ready.erase(client->pos);
 
-	STOCMessage msg(STOC_HS_PLAYER_ENTER);
-	ygo::STOC_HS_PlayerEnter s = {};
-	std::u16string tmpStr = su::stou16(client->GetName());
-	for(int i = 0; i < (int)tmpStr.length(); ++i)
-		s.name[i] = tmpStr[i];
-	s.pos = pos;
-	msg.GetBM()->Write(s);
-	SendToAll(msg);
+		players.insert(std::make_pair(pos, client));
+		players_ready.insert(std::make_pair(pos, false));
 
-	client->type = ServerRoomClient::TYPE_PLAYER;
-	client->pos  = pos;
-	SendTypeChange(client);
+		STOCMessage msg(STOC_HS_PLAYER_CHANGE);
+		uint8_t val = client->pos << 4;
+		val += pos;
+		msg.GetBM()->Write(val);
+		SendToAll(msg);
 
-	SendSpectatorNumber();
+		client->pos = pos;
+		SendTypeChange(client);
+	}
+	else
+	{
+		int pos = GetNewPlayerPos();
+		players.insert(std::make_pair(pos, client));
+		players_ready.insert(std::make_pair(pos, false));
+		spectators.erase(client);
+
+		STOCMessage msg(STOC_HS_PLAYER_ENTER);
+		ygo::STOC_HS_PlayerEnter s = {};
+		std::u16string tmpStr = su::stou16(client->GetName());
+		for(int i = 0; i < (int)tmpStr.length(); ++i)
+			s.name[i] = tmpStr[i];
+		s.pos = pos;
+		msg.GetBM()->Write(s);
+		SendToAll(msg);
+
+		client->type = ServerRoomClient::TYPE_PLAYER;
+		client->pos  = pos;
+		SendTypeChange(client);
+		SendSpectatorNumber();
+	}
 }
 
 void ServerRoom::MoveToSpectator(Client client)

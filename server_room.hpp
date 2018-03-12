@@ -15,13 +15,17 @@ class ServerRoom
 	int state; // Lobby State
 	ygo::HostInfo duelInfo;
 
+	bool IsTag() const;
+	bool IsRelay() const;
+	int GetMaxPlayers() const;
+
 	std::set<Client> clients;
 	std::set<Client> spectators;
 	std::map<int, Client> players;
 	std::map<int, bool> players_ready;
 	Client hostClient;
 
-	int GetPlayerPos() const;
+	int GetNewPlayerPos(int except = -1) const;
 
 	void SendSpectatorNumber(Client except = nullptr);
 	void SendTo(Client client, STOCMessage msg);
