@@ -135,6 +135,8 @@ void ServerRoom::Join(Client client)
 
 void ServerRoom::Leave(Client client)
 {
+	if(client->leaved)
+		return;
 	std::cout << "Client (" << client->WhoAmI() << ") Leaves\n";
 
 	if(clients.find(client) == clients.end())
@@ -169,18 +171,18 @@ void ServerRoom::Leave(Client client)
 	}
 
 	client->Disconnect();
+	client->leaved = true;
 	clients.erase(client);
 }
 
-
-void ServerRoom::AddPlayer(Client client)
+void ServerRoom::AddClient(Client client)
 {
 	switch(state)
 	{
 		case STATE_LOBBY:
-			AddToLoby(client);
+			AddToLobby(client);
 		break;
-		case STATE_GAME:
+		case STATE_DUEL:
 		case STATE_SIDE:
 			AddToGame(client);
 		break;
@@ -365,6 +367,18 @@ void ServerRoom::Ready(Client client, bool ready)
 	val += (ready) ? PLAYERCHANGE_READY : PLAYERCHANGE_NOTREADY;
 	msg.GetBM()->Write(val);
 	SendToAll(msg);
+}
+
+void ServerRoom::Kick(Client client, uint8_t pos)
+{
+	if(client != hostClient)
+		return;
+	if(pos > GetMaxPlayers())
+		return;
+	
+	auto result = players.find(pos);
+	if(result != players.end() && result->second != client)
+		Leave(result->second);
 }
 
 void ServerRoom::SendJoinMsg(Client client)

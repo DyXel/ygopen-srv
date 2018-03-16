@@ -47,6 +47,7 @@ public:
 	void MoveToDuelist(Client client);
 	void MoveToSpectator(Client client);
 	void Ready(Client client, bool ready);
+	void Kick(Client client, uint8_t pos);
 
 	void SendJoinMsg(Client client);
 	void SendTypeChange(Client client);

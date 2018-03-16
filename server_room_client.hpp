@@ -25,11 +25,11 @@ class ServerRoomClient : public std::enable_shared_from_this<ServerRoomClient>
 	void OnMoveToSpectator();
 	void OnReady();
 	void OnNotReady();
+	void OnKickPlayer(BufferManipulator* bm);
 
 	asio::ip::tcp::socket socket;
 	ServerRoom* room;
 	CTOSMessage receivedMsg;
-	bool flushing;
 
 	void DoReadHeader();
 	void DoReadBody();
@@ -37,6 +37,11 @@ class ServerRoomClient : public std::enable_shared_from_this<ServerRoomClient>
 	void DoWrite();
 public:
 	enum { TYPE_PLAYER, TYPE_SPECTATOR };
+
+	bool flushing;
+	bool leaved;
+	// NOTE: i think the flags above are a mistake
+
 	int type; // Player or Spectator?
 	int pos; // Player position, index start from 0
 

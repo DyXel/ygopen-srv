@@ -99,6 +99,9 @@ bool ServerRoomClient::ParseMsg()
 		case CTOS_HS_NOTREADY:
 			OnNotReady();
 		break;
+		case CTOS_HS_KICK:
+			OnKickPlayer(&bm);
+		break;
 		default:
 			std::cout << "Unhandled message: " << (int)msgType << std::endl;
 			return false;
@@ -124,7 +127,7 @@ void ServerRoomClient::OnJoinGame(BufferManipulator* bm)
 
 	pass = su::u16tos(std::u16string((const char16_t*)bm->GetCurrentBuffer().first));
 	
-	room->AddPlayer(shared_from_this());
+	room->AddClient(shared_from_this());
 	auth = true;
 }
 
@@ -154,10 +157,16 @@ void ServerRoomClient::OnNotReady()
 	room->Ready(shared_from_this(), false);
 }
 
+void ServerRoomClient::OnKickPlayer(BufferManipulator* bm)
+{
+	room->Kick(shared_from_this(), bm->Read<uint8_t>());
+}
+
 ServerRoomClient::ServerRoomClient(asio::ip::tcp::socket tmpSocket, ServerRoom* room) :
 	socket(std::move(tmpSocket)),
 	room(room),
-	flushing(false)
+	flushing(false),
+	leaved(false)
 {}
 
 ServerRoomClient::~ServerRoomClient()
