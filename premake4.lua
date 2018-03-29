@@ -1,4 +1,7 @@
-solution("ygopen-srv")
+local project_name = "ygopen-srv"
+local ygopen_dir   = "../ygopen"
+
+solution(project_name)
 	location(".")
 	language("C++")
 	objdir("obj")
@@ -15,12 +18,15 @@ solution("ygopen-srv")
 		defines("_RELEASE")
 		targetdir("bin/release")
 
-	project("ygopen-srv")
+	include(ygopen_dir)
+
+	project(project_name)
 		kind("ConsoleApp")
 		flags("ExtraWarnings")
 		defines("ASIO_STANDALONE")
 		files({"*.hpp", "*.cpp"})
-		--links({"sqlite3"})
+		includedirs(ygopen_dir)
+		links("ygopen")
 
 		configuration("not windows")
 			buildoptions("-pedantic")
