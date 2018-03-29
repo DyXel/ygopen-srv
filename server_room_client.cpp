@@ -85,7 +85,7 @@ bool ServerRoomClient::ParseMsg()
 			OnChat(&bm);
 		break;
 		case CTOS_UPDATE_DECK:
-			//TODO: Add banlist support
+			OnUpdateDeck(&bm);
 		break;
 		case CTOS_HS_TODUELIST:
 			OnMoveToDuelist();
@@ -102,6 +102,9 @@ bool ServerRoomClient::ParseMsg()
 		case CTOS_HS_KICK:
 			OnKickPlayer(&bm);
 		break;
+		case CTOS_HS_START:
+			OnStart();
+		break;
 		default:
 			std::cout << "Unhandled message: " << (int)msgType << std::endl;
 			return false;
@@ -114,6 +117,31 @@ bool ServerRoomClient::ParseMsg()
 void ServerRoomClient::OnPlayerInfo(BufferManipulator* bm)
 {
 	name = su::u16tos(std::u16string((const char16_t*)bm->GetCurrentBuffer().first));
+}
+
+void ServerRoomClient::OnUpdateDeck(BufferManipulator* bm)
+{
+	const int mainCount = bm->Read<uint32_t>();
+	const int sideCount = bm->Read<uint32_t>();
+	
+	std::vector<uint32_t> main;
+	std::vector<uint32_t> side;
+
+	for(int i = 0; i < mainCount; i++)
+		main.push_back(bm->Read<uint32_t>());
+	for(int i = 0; i < sideCount; i++)
+		side.push_back(bm->Read<uint32_t>());
+
+	deck.SetMainDeck(main);
+	deck.SetSideDeck(side);
+
+	std::cout << "Main/Extra Deck: ";
+	for(auto &v : main)
+		std::cout << v << ' ';
+	std::cout << "\nMain/Extra Deck: ";
+	for(auto &v : side)
+		std::cout << v << ' ';
+	std::cout << std::endl;
 }
 
 void ServerRoomClient::OnJoinGame(BufferManipulator* bm)
@@ -160,6 +188,11 @@ void ServerRoomClient::OnNotReady()
 void ServerRoomClient::OnKickPlayer(BufferManipulator* bm)
 {
 	room->Kick(shared_from_this(), bm->Read<uint8_t>());
+}
+
+void ServerRoomClient::OnStart()
+{
+	room->Start(shared_from_this());
 }
 
 ServerRoomClient::ServerRoomClient(asio::ip::tcp::socket tmpSocket, ServerRoom* room) :

@@ -7,7 +7,7 @@
 #include <deque>
 
 #include "server_message.hpp"
-
+#include "deck.hpp"
 class ServerRoom;
 
 class ServerRoomClient : public std::enable_shared_from_this<ServerRoomClient>
@@ -16,16 +16,21 @@ class ServerRoomClient : public std::enable_shared_from_this<ServerRoomClient>
 	std::string name;
 	std::string pass;
 	bool auth;
+	Deck deck;
 
 	bool ParseMsg();
 	void OnPlayerInfo(BufferManipulator* bm);
+	void OnUpdateDeck(BufferManipulator* bm);
 	void OnJoinGame(BufferManipulator* bm);
 	void OnChat(BufferManipulator* bm);
 	void OnMoveToDuelist();
 	void OnMoveToSpectator();
 	void OnReady();
 	void OnNotReady();
+
+	// Host commands
 	void OnKickPlayer(BufferManipulator* bm);
+	void OnStart();
 
 	asio::ip::tcp::socket socket;
 	ServerRoom* room;
@@ -48,7 +53,7 @@ public:
 	ServerRoomClient(asio::ip::tcp::socket, ServerRoom*);
 	~ServerRoomClient();
 
-	std::string WhoAmI() const; // TODO: This shouldn't be needed on future versions
+	std::string WhoAmI() const;
 	std::string GetName() const;
 	int GetType(bool getHost) const;
 
