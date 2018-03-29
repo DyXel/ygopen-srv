@@ -2,7 +2,7 @@
 #define __SERVER_MESSAGE_HPP__
 #include <iostream>
 #include "network.h"
-#include "buffer_manipulator.hpp"
+#include "util/buffer_manipulator.hpp"
 
 class STOCMessage
 {
