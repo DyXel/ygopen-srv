@@ -117,7 +117,7 @@ ServerRoom::ServerRoom() :
 	// Defaults.
 	duelInfo.lflist = 0;
 	duelInfo.rule = 2;
-	duelInfo.mode = 0x02;
+	duelInfo.mode = 0;
 	duelInfo.duel_rule = 4;
 	duelInfo.no_check_deck = false;
 	duelInfo.no_shuffle_deck = false;
@@ -227,23 +227,21 @@ void ServerRoom::AddToLobby(Client client)
 	// Update client with lobby info
 	for(auto& c : players)
 	{
-		STOCMessage msg(STOC_HS_PLAYER_ENTER);
+		STOCMessage msg1(STOC_HS_PLAYER_ENTER);
 		ygo::STOC_HS_PlayerEnter s = {};
 		std::u16string tmpStr = su::stou16(c.second->GetName());
 		for(int i = 0; i < (int)tmpStr.length(); ++i)
 			s.name[i] = tmpStr[i];
 		s.pos = c.first;
-		msg.GetBM()->Write(s);
-		SendTo(client, msg);
+		msg1.GetBM()->Write(s);
+		SendTo(client, msg1);
 		
-		if(players_ready[c.first])
-		{
-			STOCMessage msg(STOC_HS_PLAYER_CHANGE);
-			uint8_t val = client->GetType(false) << 4;
-			val += PLAYERCHANGE_READY;
-			msg.GetBM()->Write(val);
-			SendTo(client, msg);
-		}
+		// Refresh ready status
+		STOCMessage msg2(STOC_HS_PLAYER_CHANGE);
+		uint8_t val = client->GetType(false) << 4;
+		val += (players_ready[c.first]) ? PLAYERCHANGE_READY : PLAYERCHANGE_NOTREADY;
+		msg2.GetBM()->Write(val);
+		SendTo(client, msg2);
 	}
 
 	if(spectators.size() > 0)
@@ -379,6 +377,28 @@ void ServerRoom::Kick(Client client, uint8_t pos)
 	auto result = players.find(pos);
 	if(result != players.end() && result->second != client)
 		Leave(result->second);
+}
+
+void ServerRoom::Start(Client client)
+{
+	if(client != hostClient)
+		return;
+
+	// Check if all players are ready
+	for (auto& p : players_ready)
+	{
+		if(!p.second)
+			return;
+	}
+
+	// Check if all players deck are valid
+
+	state = STATE_RPS;
+
+	STOCMessage msg(STOC_DUEL_START);
+	SendToAll(msg);
+
+	std::cout << "attempted to start game" << std::endl;
 }
 
 void ServerRoom::SendJoinMsg(Client client)

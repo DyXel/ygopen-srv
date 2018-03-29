@@ -32,7 +32,7 @@ class ServerRoom
 	void SendToAll(STOCMessage msg);
 	void SendToAllExcept(Client client, STOCMessage msg);
 public:
-	enum { STATE_LOBBY, STATE_DUEL, STATE_SIDE};
+	enum { STATE_LOBBY, STATE_DUEL, STATE_RPS, STATE_SIDE};
 
 	Client GetHost() const;
 
@@ -47,7 +47,9 @@ public:
 	void MoveToDuelist(Client client);
 	void MoveToSpectator(Client client);
 	void Ready(Client client, bool ready);
+
 	void Kick(Client client, uint8_t pos);
+	void Start(Client client);
 
 	void SendJoinMsg(Client client);
 	void SendTypeChange(Client client);
