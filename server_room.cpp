@@ -110,7 +110,8 @@ Client ServerRoom::GetHost() const
 	return hostClient;
 }
 
-ServerRoom::ServerRoom() :
+ServerRoom::ServerRoom(CoreInterface* corei) :
+	ci(corei),
 	state(STATE_LOBBY),
 	hostClient(nullptr)
 {
@@ -391,12 +392,37 @@ void ServerRoom::Start(Client client)
 			return;
 	}
 
-	// Check if all players deck are valid
-
 	state = STATE_RPS;
 
-	STOCMessage msg(STOC_DUEL_START);
-	SendToAll(msg);
+	STOCMessage msg1(STOC_DUEL_START);
+	SendToAll(msg1);
+
+	STOCMessage msg2(STOC_GAME_MSG);
+	auto bm = msg2.GetBM();
+	bm->Write<uint8_t>(0x04);
+	bm->Write<uint8_t>(0);
+	bm->Write<int32_t>(8000);
+	bm->Write<int32_t>(8000);
+	bm->Write<int16_t>(0);
+	bm->Write<int16_t>(0);
+	bm->Write<int16_t>(0);
+	bm->Write<int16_t>(0);
+	SendTo(players[0], msg2);
+	bm->ToStart();
+	bm->Write<uint8_t>(1);
+	SendTo(players[1], msg2);
+
+	duel = std::make_shared<Duel>(ci);
+
+	for(auto& player : players)
+		duel->AddObserver(player.second.get());
+	for(auto& obs : spectators)
+		duel->AddObserver(obs.get());
+
+	duel->SetPlayersInfo(8000, 0, 0);
+	duel->Start(0x2810);
+
+	duel->Process();
 
 	std::cout << "attempted to start game" << std::endl;
 }

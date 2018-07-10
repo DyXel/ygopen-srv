@@ -26,7 +26,7 @@ solution(project_name)
 		defines("ASIO_STANDALONE")
 		files({"*.hpp", "*.cpp"})
 		includedirs(ygopen_dir)
-		links("ygopen")
+		links({"ygopen", "sqlite3", "SDL2"})
 
 		configuration("not windows")
 			buildoptions("-pedantic")

@@ -16,7 +16,27 @@ void ServerAcceptor::DoAccept()
 ServerAcceptor::ServerAcceptor(asio::io_service& ioService, asio::ip::tcp::endpoint& endpoint) :
 	tmpSocket(ioService),
 	acceptor(ioService, endpoint),
-	room()
+	ci(false),
+	room(&ci)
 {
-	DoAccept();
+	CoreAuxiliary::SetDatabaseManager(&dbm);
+	dbm.LoadDatabase("cards.cdb");
+	if(ci.LoadLibrary())
+	{
+		std::cout << "Core loaded successfully\n";
+		auto f = [](const char*, int*) -> unsigned char*
+		{
+			return (unsigned char*)"";
+		};
+		ci.set_script_reader(f);
+		ci.set_card_reader(&CoreAuxiliary::CoreCardReader);
+		ci.set_message_handler(&CoreAuxiliary::CoreMessageHandler);
+
+		DoAccept();
+	}
+}
+
+ServerAcceptor::~ServerAcceptor()
+{
+	ci.UnloadLibrary();
 }

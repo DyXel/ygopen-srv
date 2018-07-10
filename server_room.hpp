@@ -7,12 +7,17 @@
 #include "server_room_client.hpp"
 #include "server_message.hpp"
 
+#include "core_interface.hpp"
+#include "duel.hpp"
+
 typedef std::shared_ptr<ServerRoomClient> Client;
 
 class ServerRoom
 {
-	// Room State
-	int state; // Lobby State
+	CoreInterface* ci;
+	std::shared_ptr<Duel> duel;
+
+	int state;
 	ygo::HostInfo duelInfo;
 
 	bool IsTag() const;
@@ -36,7 +41,7 @@ public:
 
 	Client GetHost() const;
 
-	ServerRoom();
+	ServerRoom(CoreInterface* corei);
 	void Join(Client client);
 	void Leave(Client client);
 

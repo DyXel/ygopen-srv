@@ -207,6 +207,15 @@ ServerRoomClient::~ServerRoomClient()
 	std::cout << "SRC: Calling destructor" << std::endl;
 }
 
+void ServerRoomClient::OnNotify(BufferManipulator bm)
+{
+	STOCMessage msg(STOC_GAME_MSG);
+	msg.GetBM()->Write(&bm);
+	msg.Encode();
+	outgoingMsgs.push_back(msg);
+	Flush();
+}
+
 std::string ServerRoomClient::WhoAmI() const
 {
 	std::ostringstream out;
