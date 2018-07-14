@@ -105,6 +105,47 @@ void ServerRoom::SendToAllExcept(Client client, STOCMessage msg)
 	}
 }
 
+void ServerRoom::SendRPS()
+{
+	state = STATE_RPS;
+	
+	STOCMessage msg(STOC_SELECT_HAND);
+	SendToAll(msg);
+}
+
+void ServerRoom::StartDuel(bool result)
+{
+	STOCMessage msg(STOC_GAME_MSG);
+	auto bm = msg.GetBM();
+	bm->Write<uint8_t>(4);
+	bm->Write<uint8_t>(0);
+	bm->Write<int32_t>(8000);
+	bm->Write<int32_t>(8000);
+	bm->Write<int16_t>(0);
+	bm->Write<int16_t>(0);
+	bm->Write<int16_t>(0);
+	bm->Write<int16_t>(0);
+	SendTo(players[0], msg);
+	bm->ToStart();
+	bm->Forward(1);
+	bm->Write<uint8_t>(1);
+	bm->Forward(16);
+	SendTo(players[1], msg);
+
+	duel = std::make_shared<Duel>(ci);
+
+	for(auto& player : players)
+		duel->AddObserver(player.second.get());
+	for(auto& obs : spectators)
+		duel->AddObserver(obs.get());
+
+	duel->SetPlayersInfo(8000, 0, 0);
+	int winnerGoesFirst = (result && startPlayer->pos == (IsTag() ? 2 : 1) || !result && startPlayer->pos == 0) ? 0x80 : 0;
+	duel->Start(0x2810 + winnerGoesFirst);
+
+	duel->Process();
+}
+
 Client ServerRoom::GetHost() const
 {
 	return hostClient;
@@ -368,6 +409,67 @@ void ServerRoom::Ready(Client client, bool ready)
 	SendToAll(msg);
 }
 
+void ServerRoom::RPSHand(Client client, int answer)
+{
+	if(state != ServerRoom::STATE_RPS)
+		return;
+	if(client->type == ServerRoomClient::TYPE_SPECTATOR)
+		return;
+	if(answer < 1 || answer > 3)
+		return;
+	if(players_rpshand.find(client->pos) != players_rpshand.end())
+		return;
+
+	players_rpshand.insert(std::make_pair(client->pos, answer));
+
+	if(players_rpshand.size() == 2)
+	{
+		// Send each other the hand result
+		STOCMessage msg1(STOC_HAND_RESULT);
+		auto bm = msg1.GetBM();
+		bm->Write<uint8_t>(players_rpshand[0]);
+		bm->Write<uint8_t>(players_rpshand[1]);
+		SendTo(players[0], msg1);
+		//TODO: add Tag support
+		
+		STOCMessage msg2(STOC_HAND_RESULT);
+		bm = msg2.GetBM();
+		bm->Write<uint8_t>(players_rpshand[1]);
+		bm->Write<uint8_t>(players_rpshand[0]);
+		SendTo(players[1], msg2);
+		
+		//TODO: send to spectators
+		
+		if(players_rpshand[0] == players_rpshand[1])
+		{
+			players_rpshand.clear();
+			SendRPS();
+			return;
+		}
+		if ((players_rpshand[0] == 1 && players_rpshand[1] == 2) ||
+		    (players_rpshand[0] == 2 && players_rpshand[1] == 3) ||
+		    (players_rpshand[0] == 3 && players_rpshand[1] == 1))
+			startPlayer = IsTag() ? players[2] : players[1];
+		else
+			startPlayer = players[0];
+		
+		STOCMessage msg3(STOC_SELECT_TP);
+		SendTo(startPlayer, msg3);
+	}
+}
+
+void ServerRoom::TPSelect(Client client, bool amIFirst)
+{
+	if(state != ServerRoom::STATE_RPS)
+		return;
+	if(client->type == ServerRoomClient::TYPE_SPECTATOR)
+		return;
+	if(client != startPlayer)
+		return;
+
+	StartDuel(amIFirst);
+}
+
 void ServerRoom::Kick(Client client, uint8_t pos)
 {
 	if(client != hostClient)
@@ -392,39 +494,10 @@ void ServerRoom::Start(Client client)
 			return;
 	}
 
-	state = STATE_RPS;
+	STOCMessage msg(STOC_DUEL_START);
+	SendToAll(msg);
 
-	STOCMessage msg1(STOC_DUEL_START);
-	SendToAll(msg1);
-
-	STOCMessage msg2(STOC_GAME_MSG);
-	auto bm = msg2.GetBM();
-	bm->Write<uint8_t>(0x04);
-	bm->Write<uint8_t>(0);
-	bm->Write<int32_t>(8000);
-	bm->Write<int32_t>(8000);
-	bm->Write<int16_t>(0);
-	bm->Write<int16_t>(0);
-	bm->Write<int16_t>(0);
-	bm->Write<int16_t>(0);
-	SendTo(players[0], msg2);
-	bm->ToStart();
-	bm->Write<uint8_t>(1);
-	SendTo(players[1], msg2);
-
-	duel = std::make_shared<Duel>(ci);
-
-	for(auto& player : players)
-		duel->AddObserver(player.second.get());
-	for(auto& obs : spectators)
-		duel->AddObserver(obs.get());
-
-	duel->SetPlayersInfo(8000, 0, 0);
-	duel->Start(0x2810);
-
-	duel->Process();
-
-	std::cout << "attempted to start game" << std::endl;
+	SendRPS();
 }
 
 void ServerRoom::SendJoinMsg(Client client)

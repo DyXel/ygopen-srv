@@ -105,6 +105,12 @@ bool ServerRoomClient::ParseMsg()
 		case CTOS_HS_START:
 			OnStart();
 		break;
+		case CTOS_HAND_RESULT:
+			OnRPSHand(&bm);
+			break;
+		case CTOS_TP_RESULT:
+			OnTPSelect(&bm);
+			break;
 		default:
 			std::cout << "Unhandled message: " << (int)msgType << std::endl;
 			return false;
@@ -195,6 +201,16 @@ void ServerRoomClient::OnStart()
 	room->Start(shared_from_this());
 }
 
+void ServerRoomClient::OnRPSHand(BufferManipulator* bm)
+{
+	room->RPSHand(shared_from_this(), bm->Read<uint8_t>());
+}
+
+void ServerRoomClient::OnTPSelect(BufferManipulator* bm)
+{
+	room->TPSelect(shared_from_this(), (bool)bm->Read<uint8_t>());
+}
+
 ServerRoomClient::ServerRoomClient(asio::ip::tcp::socket tmpSocket, ServerRoom* room) :
 	socket(std::move(tmpSocket)),
 	room(room),
@@ -207,10 +223,10 @@ ServerRoomClient::~ServerRoomClient()
 	std::cout << "SRC: Calling destructor" << std::endl;
 }
 
-void ServerRoomClient::OnNotify(BufferManipulator bm)
+void ServerRoomClient::OnNotify(void* buffer, size_t length)
 {
 	STOCMessage msg(STOC_GAME_MSG);
-	msg.GetBM()->Write(&bm);
+	msg.GetBM()->Write(std::make_pair(buffer, length));
 	msg.Encode();
 	outgoingMsgs.push_back(msg);
 	Flush();

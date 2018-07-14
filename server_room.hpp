@@ -28,6 +28,8 @@ class ServerRoom
 	std::set<Client> spectators;
 	std::map<int, Client> players;
 	std::map<int, bool> players_ready;
+	std::map<int, int> players_rpshand;
+	Client startPlayer; // Player who decides the first turn duelist
 	Client hostClient;
 
 	int GetNewPlayerPos(int except = -1) const;
@@ -36,6 +38,9 @@ class ServerRoom
 	void SendTo(Client client, STOCMessage msg);
 	void SendToAll(STOCMessage msg);
 	void SendToAllExcept(Client client, STOCMessage msg);
+	
+	void SendRPS();
+	void StartDuel(bool result);
 public:
 	enum { STATE_LOBBY, STATE_DUEL, STATE_RPS, STATE_SIDE};
 
@@ -52,7 +57,9 @@ public:
 	void MoveToDuelist(Client client);
 	void MoveToSpectator(Client client);
 	void Ready(Client client, bool ready);
-
+	void RPSHand(Client client, int answer);
+	void TPSelect(Client client, bool amIFirst);
+	
 	void Kick(Client client, uint8_t pos);
 	void Start(Client client);
 

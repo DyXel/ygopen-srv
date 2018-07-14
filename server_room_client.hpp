@@ -28,6 +28,8 @@ class ServerRoomClient : public std::enable_shared_from_this<ServerRoomClient>, 
 	void OnMoveToSpectator();
 	void OnReady();
 	void OnNotReady();
+	void OnRPSHand(BufferManipulator* bm);
+	void OnTPSelect(BufferManipulator* bm);
 
 	// Host commands
 	void OnKickPlayer(BufferManipulator* bm);
@@ -54,7 +56,7 @@ public:
 	ServerRoomClient(asio::ip::tcp::socket, ServerRoom*);
 	~ServerRoomClient();
 
-	virtual void OnNotify(BufferManipulator bm);
+	virtual void OnNotify(void* buffer, size_t length);
 
 	std::string WhoAmI() const;
 	std::string GetName() const;
