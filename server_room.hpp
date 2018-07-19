@@ -23,6 +23,7 @@ class ServerRoom
 	bool IsTag() const;
 	bool IsRelay() const;
 	int GetMaxPlayers() const;
+	int GetSecondTeamCap() const;
 
 	std::set<Client> clients;
 	std::set<Client> spectators;
@@ -36,8 +37,10 @@ class ServerRoom
 
 	void SendSpectatorNumber(Client except = nullptr);
 	void SendTo(Client client, STOCMessage msg);
+	void SendToTeam(int team, STOCMessage msg);
 	void SendToAll(STOCMessage msg);
 	void SendToAllExcept(Client client, STOCMessage msg);
+	void SendToSpectators(STOCMessage msg);
 	
 	void SendRPS();
 	void StartDuel(bool result);

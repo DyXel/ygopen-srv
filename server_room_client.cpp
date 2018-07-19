@@ -58,7 +58,6 @@ bool ServerRoomClient::ParseMsg()
 	BufferManipulator bm(receivedMsg.GetDataPtr(), receivedMsg.GetMsgLength());
 	uint8_t msgType = receivedMsg.GetMsgType();
 
-	//TODO: map all of these functions
 	switch(msgType)
 	{
 		case CTOS_PLAYER_INFO:
@@ -144,7 +143,7 @@ void ServerRoomClient::OnUpdateDeck(BufferManipulator* bm)
 	std::cout << "Main/Extra Deck: ";
 	for(auto &v : main)
 		std::cout << v << ' ';
-	std::cout << "\nMain/Extra Deck: ";
+	std::cout << "\nSide Deck: ";
 	for(auto &v : side)
 		std::cout << v << ' ';
 	std::cout << std::endl;

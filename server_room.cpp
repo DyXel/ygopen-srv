@@ -48,6 +48,16 @@ int ServerRoom::GetNewPlayerPos(int except) const
 	return -1;
 }
 
+int ServerRoom::GetSecondTeamCap() const
+{
+	if(IsTag())
+		return 2;
+	else if(IsRelay())
+		return 3;
+	else
+		return 1;
+}
+
 void ServerRoom::SendSpectatorNumber(Client except)
 {
 	STOCMessage msg(STOC_HS_WATCH_CHANGE);
@@ -63,6 +73,36 @@ void ServerRoom::SendTo(Client client, STOCMessage msg)
 	msg.Encode();
 	client->outgoingMsgs.push_back(msg);
 	client->Flush();
+}
+
+void ServerRoom::SendToTeam(int team, STOCMessage msg)
+{
+	if(!IsTag() && !IsRelay())
+	{
+		SendTo(players[team], msg);
+		return;
+	}
+
+	msg.Encode();
+	
+	const int playersPerTeam = GetSecondTeamCap(); //TODO: handle relay better
+
+	if(team == 0)
+	{
+		for(int i = 0; i < playersPerTeam; i++)
+		{
+			players[i]->outgoingMsgs.push_back(msg);
+			players[i]->Flush();
+		}
+	}
+	else if(team == 1)
+	{
+		for(int i = playersPerTeam; i < playersPerTeam + playersPerTeam; i++)
+		{
+			players[i]->outgoingMsgs.push_back(msg);
+			players[i]->Flush();
+		}
+	}
 }
 
 void ServerRoom::SendToAll(STOCMessage msg)
@@ -105,12 +145,24 @@ void ServerRoom::SendToAllExcept(Client client, STOCMessage msg)
 	}
 }
 
+void ServerRoom::SendToSpectators(STOCMessage msg)
+{
+	msg.Encode();
+
+	for(auto& c : spectators)
+	{
+		c->outgoingMsgs.push_back(msg);
+		c->Flush();
+	}
+}
+
 void ServerRoom::SendRPS()
 {
 	state = STATE_RPS;
 	
 	STOCMessage msg(STOC_SELECT_HAND);
-	SendToAll(msg);
+	SendTo(players[0], msg);
+	SendTo(players[GetSecondTeamCap()], msg);
 }
 
 void ServerRoom::StartDuel(bool result)
@@ -125,12 +177,12 @@ void ServerRoom::StartDuel(bool result)
 	bm->Write<int16_t>(0);
 	bm->Write<int16_t>(0);
 	bm->Write<int16_t>(0);
-	SendTo(players[0], msg);
+	SendToTeam(0, msg);
 	bm->ToStart();
 	bm->Forward(1);
 	bm->Write<uint8_t>(1);
 	bm->Forward(16);
-	SendTo(players[1], msg);
+	SendToTeam(1, msg);
 
 	duel = std::make_shared<Duel>(ci);
 
@@ -140,7 +192,7 @@ void ServerRoom::StartDuel(bool result)
 		duel->AddObserver(obs.get());
 
 	duel->SetPlayersInfo(8000, 0, 0);
-	int winnerGoesFirst = (result && startPlayer->pos == (IsTag() ? 2 : 1) || !result && startPlayer->pos == 0) ? 0x80 : 0;
+	int winnerGoesFirst = ((result && startPlayer->pos == GetSecondTeamCap()) || (!result && startPlayer->pos == 0)) ? 0x80 : 0;
 	duel->Start(0x2810 + winnerGoesFirst);
 
 	duel->Process();
@@ -420,6 +472,11 @@ void ServerRoom::RPSHand(Client client, int answer)
 	if(players_rpshand.find(client->pos) != players_rpshand.end())
 		return;
 
+	const int stc = GetSecondTeamCap();
+
+	if(client->pos != 0 && client->pos != stc)
+		return;
+
 	players_rpshand.insert(std::make_pair(client->pos, answer));
 
 	if(players_rpshand.size() == 2)
@@ -428,31 +485,34 @@ void ServerRoom::RPSHand(Client client, int answer)
 		STOCMessage msg1(STOC_HAND_RESULT);
 		auto bm = msg1.GetBM();
 		bm->Write<uint8_t>(players_rpshand[0]);
-		bm->Write<uint8_t>(players_rpshand[1]);
-		SendTo(players[0], msg1);
-		//TODO: add Tag support
+		bm->Write<uint8_t>(players_rpshand[stc]);
+		SendToTeam(0, msg1);
 		
 		STOCMessage msg2(STOC_HAND_RESULT);
 		bm = msg2.GetBM();
-		bm->Write<uint8_t>(players_rpshand[1]);
+		bm->Write<uint8_t>(players_rpshand[stc]);
 		bm->Write<uint8_t>(players_rpshand[0]);
-		SendTo(players[1], msg2);
+		SendToTeam(1, msg2);
 		
-		//TODO: send to spectators
+		SendToSpectators(msg1);
 		
-		if(players_rpshand[0] == players_rpshand[1])
+		if(players_rpshand[0] == players_rpshand[stc])
 		{
 			players_rpshand.clear();
 			SendRPS();
 			return;
 		}
-		if ((players_rpshand[0] == 1 && players_rpshand[1] == 2) ||
-		    (players_rpshand[0] == 2 && players_rpshand[1] == 3) ||
-		    (players_rpshand[0] == 3 && players_rpshand[1] == 1))
-			startPlayer = IsTag() ? players[2] : players[1];
+		if ((players_rpshand[0] == 1 && players_rpshand[stc] == 2) ||
+		    (players_rpshand[0] == 2 && players_rpshand[stc] == 3) ||
+		    (players_rpshand[0] == 3 && players_rpshand[stc] == 1))
+		{
+			startPlayer = players[stc];
+		}
 		else
+		{
 			startPlayer = players[0];
-		
+		}
+
 		STOCMessage msg3(STOC_SELECT_TP);
 		SendTo(startPlayer, msg3);
 	}
