@@ -17,6 +17,7 @@ class ServerAcceptor
 
 	DatabaseManager dbm;
 	CoreInterface ci;
+	Banlist bl;
 
 	ServerRoom room;
 

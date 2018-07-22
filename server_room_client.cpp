@@ -137,16 +137,7 @@ void ServerRoomClient::OnUpdateDeck(BufferManipulator* bm)
 	for(int i = 0; i < sideCount; i++)
 		side.push_back(bm->Read<uint32_t>());
 
-	deck.SetMainDeck(main);
-	deck.SetSideDeck(side);
-
-	std::cout << "Main/Extra Deck: ";
-	for(auto &v : main)
-		std::cout << v << ' ';
-	std::cout << "\nSide Deck: ";
-	for(auto &v : side)
-		std::cout << v << ' ';
-	std::cout << std::endl;
+	room->UpdateDeck(shared_from_this(), main, side);
 }
 
 void ServerRoomClient::OnJoinGame(BufferManipulator* bm)

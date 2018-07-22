@@ -203,10 +203,13 @@ Client ServerRoom::GetHost() const
 	return hostClient;
 }
 
-ServerRoom::ServerRoom(CoreInterface* corei) :
+ServerRoom::ServerRoom(DatabaseManager* dbmanager, CoreInterface* corei, Banlist* bl) :
+	dbm(dbmanager),
 	ci(corei),
+	banlist(bl),
 	state(STATE_LOBBY),
-	hostClient(nullptr)
+	hostClient(nullptr),
+	startPlayer(nullptr)
 {
 	// Defaults.
 	duelInfo.lflist = 0;
@@ -281,6 +284,52 @@ void ServerRoom::AddClient(Client client)
 			AddToGame(client);
 		break;
 	}
+}
+
+void ServerRoom::UpdateDeck(Client client, std::vector<unsigned int>& mainExtra, std::vector<unsigned int>& side)
+{
+	std::vector<unsigned int> main;
+	std::vector<unsigned int> extra;
+
+	for(auto& code : mainExtra)
+	{
+		const CardData* cd = dbm->GetCardDataByCode(code);
+
+		if(cd == nullptr)
+		{
+			printf("WARNING: %d card not found in database\n", code);
+			continue;
+		}
+
+		if((cd->type & TYPE_FUSION) || (cd->type & TYPE_SYNCHRO)  ||
+		   (cd->type & TYPE_XYZ) || (cd->type & TYPE_LINK))
+		{
+			extra.push_back(code);
+		}
+		else
+		{
+			main.push_back(code);
+		}
+	}
+
+	client->deck.SetMainDeck(main);
+	client->deck.SetExtraDeck(extra);
+	client->deck.SetSideDeck(side);
+
+	std::cout << "Main Deck: ";
+	for(auto &v : main)
+		std::cout << v << ' ';
+	std::cout << std::endl;
+
+	std::cout << "\nExtra Deck: ";
+	for(auto &v : extra)
+		std::cout << v << ' ';
+	std::cout << std::endl;
+
+	std::cout << "\nSide Deck: ";
+	for(auto &v : side)
+		std::cout << v << ' ';
+	std::cout << std::endl;
 }
 
 void ServerRoom::AddToLobby(Client client)
@@ -449,8 +498,32 @@ void ServerRoom::Ready(Client client, bool ready)
 		return;
 	if(client->type == ServerRoomClient::TYPE_SPECTATOR)
 		return;
+	if(players_ready[client->pos] == ready)
+		return;
+	
+	if(ready)
+	{
+		unsigned int result = client->deck.Verify(dbm);
+		ready = client->deck.IsVerified();
 
-	//TODO: Check deck here
+		if(ready && banlist != nullptr)
+		{
+			result = client->deck.CheckUsability(banlist);
+			ready = client->deck.CanBeUsed();
+		}
+		
+		if(!ready)
+		{
+			STOCMessage msg(STOC_ERROR_MSG);
+			auto bm = msg.GetBM();
+			bm->Write<uint8_t>(2);
+			bm->Write<uint16_t>(0); // Padding
+			bm->Write<uint8_t>(0); // Padding
+
+			bm->Write<uint32_t>(result);
+			SendTo(client, msg);
+		}
+	}
 
 	players_ready[client->pos] = ready;
 

@@ -7,14 +7,18 @@
 #include "server_room_client.hpp"
 #include "server_message.hpp"
 
+#include "database_manager.hpp"
 #include "core_interface.hpp"
+#include "banlist.hpp"
 #include "duel.hpp"
 
 typedef std::shared_ptr<ServerRoomClient> Client;
 
 class ServerRoom
 {
+	DatabaseManager* dbm;
 	CoreInterface* ci;
+	Banlist* banlist;
 	std::shared_ptr<Duel> duel;
 
 	int state;
@@ -30,8 +34,8 @@ class ServerRoom
 	std::map<int, Client> players;
 	std::map<int, bool> players_ready;
 	std::map<int, int> players_rpshand;
-	Client startPlayer; // Player who decides the first turn duelist
 	Client hostClient;
+	Client startPlayer; // Player who decides the first turn duelist
 
 	int GetNewPlayerPos(int except = -1) const;
 
@@ -49,10 +53,11 @@ public:
 
 	Client GetHost() const;
 
-	ServerRoom(CoreInterface* corei);
+	ServerRoom(DatabaseManager* dbmanager, CoreInterface* corei, Banlist* bl);
 	void Join(Client client);
 	void Leave(Client client);
 
+	void UpdateDeck(Client client, std::vector<unsigned int>& mainExtra, std::vector<unsigned int>& side);
 	void AddClient(Client client);
 	void AddToLobby(Client client);
 	void AddToGame(Client client);

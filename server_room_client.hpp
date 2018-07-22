@@ -17,7 +17,6 @@ class ServerRoomClient : public std::enable_shared_from_this<ServerRoomClient>, 
 	std::string name;
 	std::string pass;
 	bool auth;
-	Deck deck;
 
 	bool ParseMsg();
 	void OnPlayerInfo(BufferManipulator* bm);
@@ -45,6 +44,7 @@ class ServerRoomClient : public std::enable_shared_from_this<ServerRoomClient>, 
 	void DoWrite();
 public:
 	enum { TYPE_PLAYER, TYPE_SPECTATOR };
+	Deck deck;
 
 	bool flushing;
 	bool leaved;

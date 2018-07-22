@@ -1,4 +1,6 @@
 #include "server_acceptor.hpp"
+#include <fstream>
+#include <sstream>
 
 void ServerAcceptor::DoAccept()
 {
@@ -17,23 +19,31 @@ ServerAcceptor::ServerAcceptor(asio::io_service& ioService, asio::ip::tcp::endpo
 	tmpSocket(ioService),
 	acceptor(ioService, endpoint),
 	ci(false),
-	room(&ci)
+	room(&dbm, &ci, &bl)
 {
 	CoreAuxiliary::SetDatabaseManager(&dbm);
 	dbm.LoadDatabase("cards.cdb");
-	if(ci.LoadLibrary())
-	{
-		std::cout << "Core loaded successfully\n";
-		auto f = [](const char*, int*) -> unsigned char*
-		{
-			return (unsigned char*)"";
-		};
-		ci.set_script_reader(f);
-		ci.set_card_reader(&CoreAuxiliary::CoreCardReader);
-		ci.set_message_handler(&CoreAuxiliary::CoreMessageHandler);
 
-		DoAccept();
-	}
+	if(!ci.LoadLibrary())
+		return;
+	std::cout << "Core loaded successfully\n";
+
+	auto f = [](const char*, int*) -> unsigned char*
+	{
+		return (unsigned char*)"";
+	};
+	ci.set_script_reader(f);
+	ci.set_card_reader(&CoreAuxiliary::CoreCardReader);
+	ci.set_message_handler(&CoreAuxiliary::CoreMessageHandler);
+
+	std::ifstream t("2018.5 TCG.json");
+	std::stringstream buffer;
+	buffer << t.rdbuf();
+	std::string s = buffer.str();
+	if(!bl.FromJSON(s))
+		return;
+
+	DoAccept();
 }
 
 ServerAcceptor::~ServerAcceptor()
