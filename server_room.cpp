@@ -169,20 +169,27 @@ void ServerRoom::StartDuel(bool result)
 {
 	STOCMessage msg(STOC_GAME_MSG);
 	auto bm = msg.GetBM();
-	bm->Write<uint8_t>(4);
+	bm->Write<uint8_t>(duelInfo.duel_rule);
 	bm->Write<uint8_t>(0);
-	bm->Write<int32_t>(8000);
-	bm->Write<int32_t>(8000);
+	bm->Write<int32_t>(duelInfo.start_lp);
+	bm->Write<int32_t>(duelInfo.start_lp);
 	bm->Write<int16_t>(0);
 	bm->Write<int16_t>(0);
 	bm->Write<int16_t>(0);
 	bm->Write<int16_t>(0);
 	SendToTeam(0, msg);
+
 	bm->ToStart();
 	bm->Forward(1);
 	bm->Write<uint8_t>(1);
 	bm->Forward(16);
 	SendToTeam(1, msg);
+
+	bm->ToStart();
+	bm->Forward(1);
+	bm->Write<uint8_t>(0x10);
+	bm->Forward(16);
+	SendToSpectators(msg);
 
 	duel = std::make_shared<Duel>(ci);
 
@@ -270,6 +277,26 @@ void ServerRoom::Leave(Client client)
 	client->Disconnect();
 	client->leaved = true;
 	clients.erase(client);
+}
+
+void ServerRoom::WaitforResponse(Client client)
+{
+	lastPlayer = client;
+	// TODO: Send time left to player
+}
+
+void ServerRoom::Response(Client client, void* buffer, size_t bufferLength)
+{
+	if(client != lastPlayer)
+		return;
+	if(bufferLength > 64)
+	{
+		std::puts("Buffer too long!");
+		return;
+	}
+
+	duel->SetResponseBuffer(buffer, bufferLength);
+	duel->Process();
 }
 
 void ServerRoom::AddClient(Client client)

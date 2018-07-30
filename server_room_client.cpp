@@ -5,6 +5,8 @@
 
 #include "string_utils.hpp"
 
+#include "core_messages.hpp"
+
 void ServerRoomClient::DoReadHeader()
 {
 	auto self(shared_from_this());
@@ -80,6 +82,9 @@ bool ServerRoomClient::ParseMsg()
 
 	switch(msgType)
 	{
+		case CTOS_RESPONSE:
+			OnResponse(&bm);
+		break;
 		case CTOS_CHAT:
 			OnChat(&bm);
 		break;
@@ -117,6 +122,13 @@ bool ServerRoomClient::ParseMsg()
 	}
 
 	return true;
+}
+
+void ServerRoomClient::OnResponse(BufferManipulator* bm)
+{
+	const auto b = bm->GetCurrentBuffer();
+	std::cout << pos << ": Setting response..." << std::endl;
+	room->Response(shared_from_this(), b.first, b.second);
 }
 
 void ServerRoomClient::OnPlayerInfo(BufferManipulator* bm)
@@ -213,8 +225,82 @@ ServerRoomClient::~ServerRoomClient()
 	std::cout << "SRC: Calling destructor" << std::endl;
 }
 
+static const std::set<int> playerMsgs =
+{
+	CoreMessage::SelectBattleCmd,
+	CoreMessage::SelectIdleCmd,
+	CoreMessage::SelectEffectYn,
+	CoreMessage::SelectYesNo,
+	CoreMessage::SelectOption,
+	CoreMessage::SelectCard,
+	CoreMessage::SelectTribute,
+	CoreMessage::SelectUnselect,
+	CoreMessage::SelectChain,
+	CoreMessage::SelectPlace,
+	CoreMessage::SelectPosition,
+	CoreMessage::SelectDisfield,
+	CoreMessage::SelectCounter,
+	CoreMessage::SelectSum,
+	CoreMessage::SortCard,
+	CoreMessage::SortChain,
+	CoreMessage::MissedEffect,
+	CoreMessage::RockPaperScissors,
+	CoreMessage::AnnounceRace,
+	CoreMessage::AnnounceAttrib,
+	CoreMessage::AnnounceCard,
+	CoreMessage::AnnounceNumber,
+	CoreMessage::AnnounceCardFilter
+};
+
 void ServerRoomClient::OnNotify(void* buffer, size_t length)
 {
+	BufferManipulator bm(buffer, length);
+
+	if(type == -1) // Do not handle spectators here
+		return;
+
+	const auto msgType = bm.Read<uint8_t>();
+
+	// First check for messages to this player
+	auto search = playerMsgs.find((int)msgType);
+	if(search != playerMsgs.end())
+	{
+		if(bm.Read<uint8_t>() == pos)
+			room->WaitforResponse(shared_from_this());
+		else
+			return;
+	}
+	else
+	{
+		// Special cases here
+		switch(msgType)
+		{
+			case CoreMessage::Hint:
+			{
+				const auto type = bm.Read<uint8_t>();
+				const auto forPlayer = bm.Read<uint8_t>();
+				if((type == 1 || type == 2 || type == 3 || type == 5) && forPlayer != pos)
+					return;
+				else if ((type == 4 || type == 6 || type == 7 || type == 8 || type == 9) && forPlayer == pos)
+					return;
+				// type == 10 // always send the message
+			}
+			break;
+			case CoreMessage::ConfirmCards:
+			{
+				const auto forPlayer = bm.Read<uint8_t>();
+				bm.Forward(1 + 4);
+				if (bm.Read<uint8_t>() == 0x01 && forPlayer != pos) // 0x01 == LOCATION_DECK
+					return;
+			}
+			break;
+		}
+	}
+
+	// Strip any knowledge that is not meant for this player
+	//TODO
+
+	// Send message
 	STOCMessage msg(STOC_GAME_MSG);
 	msg.GetBM()->Write(std::make_pair(buffer, length));
 	msg.Encode();

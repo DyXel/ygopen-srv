@@ -19,6 +19,7 @@ class ServerRoomClient : public std::enable_shared_from_this<ServerRoomClient>, 
 	bool auth;
 
 	bool ParseMsg();
+	void OnResponse(BufferManipulator* bm);
 	void OnPlayerInfo(BufferManipulator* bm);
 	void OnUpdateDeck(BufferManipulator* bm);
 	void OnJoinGame(BufferManipulator* bm);

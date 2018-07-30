@@ -36,6 +36,7 @@ class ServerRoom
 	std::map<int, int> players_rpshand;
 	Client hostClient;
 	Client startPlayer; // Player who decides the first turn duelist
+	Client lastPlayer; // Player who we are expecting a response from
 
 	int GetNewPlayerPos(int except = -1) const;
 
@@ -56,7 +57,10 @@ public:
 	ServerRoom(DatabaseManager* dbmanager, CoreInterface* corei, Banlist* bl);
 	void Join(Client client);
 	void Leave(Client client);
+	
+	void WaitforResponse(Client client);
 
+	void Response(Client client, void* buffer, size_t bufferLength);
 	void UpdateDeck(Client client, std::vector<unsigned int>& mainExtra, std::vector<unsigned int>& side);
 	void AddClient(Client client);
 	void AddToLobby(Client client);
