@@ -2,6 +2,7 @@
 #include <fstream>
 #include <sstream>
 
+
 void ServerAcceptor::DoAccept()
 {
 	acceptor.async_accept(tmpSocket, [this](std::error_code ec)
@@ -21,6 +22,7 @@ ServerAcceptor::ServerAcceptor(asio::io_service& ioService, asio::ip::tcp::endpo
 	ci(false),
 	room(&dbm, &ci, &bl)
 {
+	CoreAuxiliary::SetCore(&ci);
 	CoreAuxiliary::SetDatabaseManager(&dbm);
 	dbm.LoadDatabase("cards.cdb");
 
@@ -28,17 +30,33 @@ ServerAcceptor::ServerAcceptor(asio::io_service& ioService, asio::ip::tcp::endpo
 		return;
 	std::cout << "Core loaded successfully\n";
 
-	auto f = [](const char*, int*) -> unsigned char*
+	auto script_reader = [](const char* file, int* slen) -> unsigned char*
 	{
-		return (unsigned char*)"";
+		std::cout << "attempt to load script: " << file << std::endl;
+		
+		std::ifstream f(file, std::ios::in | std::ios::binary);
+		if(f.is_open())
+		{
+			std::string contents;
+			f.seekg(0, std::ios::end);
+			contents.resize(f.tellg());
+			f.seekg(0, std::ios::beg);
+			f.read(&contents.front(), contents.size());
+			f.close();
+			*slen = contents.size();
+			return (unsigned char*)&contents.front();
+		}
+		
+		std::cout << "file could not be loaded." << std::endl;
+		return 0;
 	};
-	ci.set_script_reader(f);
+	//ci.set_script_reader(script_reader);
 	ci.set_card_reader(&CoreAuxiliary::CoreCardReader);
 	ci.set_message_handler(&CoreAuxiliary::CoreMessageHandler);
 
-	std::ifstream t("2018.5 TCG.json");
+	std::ifstream f("2018.5 TCG.json");
 	std::stringstream buffer;
-	buffer << t.rdbuf();
+	buffer << f.rdbuf();
 	std::string s = buffer.str();
 	if(!bl.FromJSON(s))
 		return;
