@@ -17,21 +17,7 @@ struct HostInfo {
 	unsigned char check;
 	unsigned int duel_flag;
 	int forbiddentypes;
-	bool destiny_draw;
-	bool sealed;
-	bool booster;
-	bool speed;
-	bool concentration;
-	bool boss;
-	bool city;
-	bool kingdom;
-	bool dimension;
-	bool turbo1;
-	bool turbo2;
-	bool doubled;
-	bool command;
-	bool master;
-	int rule_count;
+	unsigned short extra_rules;
 };
 struct HostPacket {
 	unsigned short identifier;
