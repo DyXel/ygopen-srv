@@ -240,7 +240,6 @@ static const std::set<int> playerMsgs =
 	CoreMessage::SelectPosition,
 	CoreMessage::SelectDisfield,
 	CoreMessage::SelectCounter,
-	CoreMessage::SelectSum,
 	CoreMessage::SortCard,
 	CoreMessage::SortChain,
 	CoreMessage::MissedEffect,
@@ -261,7 +260,7 @@ void ServerRoomClient::OnNotify(void* buffer, size_t length)
 
 	const auto msgType = bm.Read<uint8_t>();
 
-	// First check for messages to this player
+	// Check for messages to this player
 	auto search = playerMsgs.find((int)msgType);
 	if(search != playerMsgs.end())
 	{
@@ -275,6 +274,15 @@ void ServerRoomClient::OnNotify(void* buffer, size_t length)
 		// Special cases here
 		switch(msgType)
 		{
+			case CoreMessage::SelectSum:
+			{
+				bm.Forward(1);
+				if(bm.Read<uint8_t>() == pos)
+					room->WaitforResponse(shared_from_this());
+				else
+					return;
+			}
+			break;
 			case CoreMessage::Hint:
 			{
 				const auto type = bm.Read<uint8_t>();
