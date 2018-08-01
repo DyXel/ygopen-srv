@@ -167,16 +167,36 @@ void ServerRoom::SendRPS()
 
 void ServerRoom::StartDuel(bool result)
 {
+	duel = std::make_shared<Duel>(ci);
+
+	for(auto& player : players)
+		duel->AddObserver(player.second.get());
+	for(auto& obs : spectators)
+		duel->AddObserver(obs.get());
+
+	duel->SetPlayersInfo(duelInfo.start_lp, duelInfo.start_hand, duelInfo.draw_count);
+	
+	// add cards..
+	// TODO: handle tag duels
+	for(auto& player : players)
+	{
+		for(auto& code : player.second->deck.main)
+			duel->NewCard(code, player.first, player.first, 0x1, 0, 0x8);
+		
+		for(auto& code : player.second->deck.extra)
+			duel->NewCard(code, player.first, player.first, 0x40, 0, 0x8);
+	}
+	
 	STOCMessage msg(STOC_GAME_MSG);
 	auto bm = msg.GetBM();
-	bm->Write<uint8_t>(duelInfo.duel_rule);
+	bm->Write<uint8_t>(0x4); // MSG_START
 	bm->Write<uint8_t>(0);
 	bm->Write<int32_t>(duelInfo.start_lp);
 	bm->Write<int32_t>(duelInfo.start_lp);
-	bm->Write<int16_t>(0);
-	bm->Write<int16_t>(0);
-	bm->Write<int16_t>(0);
-	bm->Write<int16_t>(0);
+	bm->Write<int16_t>(duel->QueryFieldCount(0, 0x1));
+	bm->Write<int16_t>(duel->QueryFieldCount(0, 0x40));
+	bm->Write<int16_t>(duel->QueryFieldCount(1, 0x1));
+	bm->Write<int16_t>(duel->QueryFieldCount(1, 0x40));
 	SendToTeam(0, msg);
 
 	bm->ToStart();
@@ -190,17 +210,9 @@ void ServerRoom::StartDuel(bool result)
 	bm->Write<uint8_t>(0x10);
 	bm->Forward(16);
 	SendToSpectators(msg);
-
-	duel = std::make_shared<Duel>(ci);
-
-	for(auto& player : players)
-		duel->AddObserver(player.second.get());
-	for(auto& obs : spectators)
-		duel->AddObserver(obs.get());
-
-	duel->SetPlayersInfo(8000, 0, 0);
-	int winnerGoesFirst = ((result && startPlayer->pos == GetSecondTeamCap()) || (!result && startPlayer->pos == 0)) ? 0x80 : 0;
-	duel->Start(0x2810 + winnerGoesFirst);
+	
+	// TODO: swap players if second player goes first
+	duel->Start(duelInfo.duel_flag );
 
 	duel->Process();
 }
@@ -218,6 +230,7 @@ ServerRoom::ServerRoom(DatabaseManager* dbmanager, CoreInterface* corei, Banlist
 	hostClient(nullptr),
 	startPlayer(nullptr)
 {
+	duelInfo = {};
 	// Defaults.
 	duelInfo.lflist = 0;
 	duelInfo.rule = 2;
@@ -229,6 +242,10 @@ ServerRoom::ServerRoom(DatabaseManager* dbmanager, CoreInterface* corei, Banlist
 	duelInfo.start_hand = 5;
 	duelInfo.draw_count = 1;
 	duelInfo.time_limit = 240;
+	duelInfo.check = 2; // use lua64
+	duelInfo.duel_flag = 0x2800;
+	duelInfo.forbiddentypes = 0;
+	duelInfo.extra_rules = 0;
 }
 
 void ServerRoom::Join(Client client)
@@ -273,6 +290,11 @@ void ServerRoom::Leave(Client client)
 		if(hostClient != nullptr)
 			SendTypeChange(hostClient);
 	}
+
+	if(startPlayer == client)
+		startPlayer = nullptr;
+	if(lastPlayer == client)
+		lastPlayer = nullptr;
 
 	client->Disconnect();
 	client->leaved = true;
@@ -339,9 +361,9 @@ void ServerRoom::UpdateDeck(Client client, std::vector<unsigned int>& mainExtra,
 		}
 	}
 
-	client->deck.SetMainDeck(main);
-	client->deck.SetExtraDeck(extra);
-	client->deck.SetSideDeck(side);
+	client->deck.main = main;
+	client->deck.extra = extra;
+	client->deck.side = side;
 
 	std::cout << "Main Deck: ";
 	for(auto &v : main)
@@ -439,7 +461,7 @@ void ServerRoom::Chat(Client client, std::string& chatMsg)
 		s.msg[i] = tmpStr[i];
 
 	msg.GetBM()->Write(s);
-	SendToAllExcept(client, msg);
+	SendToAll(msg);
 }
 
 void ServerRoom::MoveToDuelist(Client client)
@@ -647,7 +669,6 @@ void ServerRoom::Start(Client client)
 	if(client != hostClient)
 		return;
 
-	// Check if all players are ready
 	for (auto& p : players_ready)
 	{
 		if(!p.second)
