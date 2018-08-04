@@ -2,6 +2,11 @@
 
 #include <iostream>
 #include "string_utils.hpp"
+#include "server_acceptor.hpp"
+
+#include "database_manager.hpp"
+#include "core_interface.hpp"
+#include "banlist.hpp"
 
 bool ServerRoom::IsTag() const
 {
@@ -11,6 +16,11 @@ bool ServerRoom::IsTag() const
 bool ServerRoom::IsRelay() const
 {
 	return duelInfo.mode == 0x03;
+}
+
+int ServerRoom::GetPlayersNumber() const
+{
+	return players.size();
 }
 
 int ServerRoom::GetMaxPlayers() const
@@ -36,24 +46,19 @@ int ServerRoom::GetNewPlayerPos(int except) const
 				return i;
 		}
 	}
-	else
-	{
-		int pos = except;
-		while(players.count(pos) == 1)
-			pos = (pos + 1) % maxPlayers;
-		return pos;
-	}
 
-	// UNREACHABLE
-	return -1;
+	int pos = except;
+	while(players.count(pos) == 1)
+		pos = (pos + 1) % maxPlayers;
+	return pos;
 }
 
 int ServerRoom::GetSecondTeamCap() const
 {
-	if(IsTag())
-		return 2;
-	else if(IsRelay())
+	if(IsRelay())
 		return 3;
+	else if(IsTag())
+		return 2;
 	else
 		return 1;
 }
@@ -85,7 +90,7 @@ void ServerRoom::SendToTeam(int team, STOCMessage msg)
 
 	msg.Encode();
 	
-	const int playersPerTeam = GetSecondTeamCap(); //TODO: handle relay better
+	const int playersPerTeam = GetSecondTeamCap(); // TODO: handle relay better
 
 	if(team == 0)
 	{
@@ -167,6 +172,7 @@ void ServerRoom::SendRPS()
 
 void ServerRoom::StartDuel(bool result)
 {
+	state = STATE_DUEL;
 	duel = std::make_shared<Duel>(ci);
 
 	for(auto& player : players)
@@ -178,6 +184,7 @@ void ServerRoom::StartDuel(bool result)
 	
 	// add cards..
 	// TODO: handle tag duels
+	// TODO: shuffle deck
 	for(auto& player : players)
 	{
 		for(auto& code : player.second->deck.main)
@@ -217,12 +224,32 @@ void ServerRoom::StartDuel(bool result)
 	duel->Process();
 }
 
+void ServerRoom::EndDuel()
+{
+	// TODO: replay sending should be here
+	// TODO: If match, handle it here
+	duel = nullptr; // Implicitly ends duel
+	
+	Close();
+}
+
+void ServerRoom::Close()
+{
+	for(auto& client : clients)
+		Leave(client, false);
+	
+	clients.clear();
+	
+	acceptor->DeleteRoom(shared_from_this());
+}
+
 Client ServerRoom::GetHost() const
 {
 	return hostClient;
 }
 
-ServerRoom::ServerRoom(DatabaseManager* dbmanager, CoreInterface* corei, Banlist* bl) :
+ServerRoom::ServerRoom(ServerAcceptor* acceptor, DatabaseManager& dbmanager, CoreInterface& corei, Banlist& bl) :
+	acceptor(acceptor),
 	dbm(dbmanager),
 	ci(corei),
 	banlist(bl),
@@ -248,13 +275,19 @@ ServerRoom::ServerRoom(DatabaseManager* dbmanager, CoreInterface* corei, Banlist
 	duelInfo.extra_rules = 0;
 }
 
+ServerRoom::~ServerRoom()
+{
+	std::cout << "Server Room Destructor called" << std::endl;
+}
+
+
 void ServerRoom::Join(Client client)
 {
 	std::cout << "Client (" << client->WhoAmI() << ") Joins\n";
 	clients.insert(client);
 }
 
-void ServerRoom::Leave(Client client)
+void ServerRoom::Leave(Client client, bool fullyDelete)
 {
 	if(client->leaved)
 		return;
@@ -298,7 +331,8 @@ void ServerRoom::Leave(Client client)
 
 	client->Disconnect();
 	client->leaved = true;
-	clients.erase(client);
+	if(fullyDelete)
+		clients.erase(client);
 }
 
 void ServerRoom::WaitforResponse(Client client)
@@ -335,6 +369,24 @@ void ServerRoom::AddClient(Client client)
 	}
 }
 
+void ServerRoom::Surrender(Client client)
+{
+	if(client->type != ServerRoomClient::TYPE_PLAYER)
+		return;
+	if(state != STATE_DUEL)
+		return;
+	
+	// Send MSG_WIN
+	STOCMessage msg(STOC_GAME_MSG);
+	auto bm = msg.GetBM();
+	bm->Write<uint8_t>(0x5); // MSG_WIN
+	bm->Write<uint8_t>(1 - client->pos);
+	bm->Write<uint8_t>(0); // REASON_SURRENDER
+	SendToAll(msg);
+	
+	EndDuel();
+}
+
 void ServerRoom::UpdateDeck(Client client, std::vector<unsigned int>& mainExtra, std::vector<unsigned int>& side)
 {
 	std::vector<unsigned int> main;
@@ -342,7 +394,7 @@ void ServerRoom::UpdateDeck(Client client, std::vector<unsigned int>& mainExtra,
 
 	for(auto& code : mainExtra)
 	{
-		const CardData* cd = dbm->GetCardDataByCode(code);
+		const CardData* cd = dbm.GetCardDataByCode(code);
 
 		if(cd == nullptr)
 		{
@@ -555,13 +607,12 @@ void ServerRoom::Ready(Client client, bool ready)
 		unsigned int result = client->deck.Verify(dbm);
 		ready = client->deck.IsVerified();
 
-		if(ready && banlist != nullptr)
+		if(ready)
 		{
 			result = client->deck.CheckUsability(banlist);
 			ready = client->deck.CanBeUsed();
 		}
-		
-		if(!ready)
+		else
 		{
 			STOCMessage msg(STOC_ERROR_MSG);
 			auto bm = msg.GetBM();

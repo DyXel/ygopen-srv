@@ -9,6 +9,7 @@
 #include "server_message.hpp"
 #include "deck.hpp"
 #include "duel_observer.hpp"
+
 class ServerRoom;
 
 class ServerRoomClient : public std::enable_shared_from_this<ServerRoomClient>, public DuelObserver
@@ -23,6 +24,7 @@ class ServerRoomClient : public std::enable_shared_from_this<ServerRoomClient>, 
 	void OnPlayerInfo(BufferManipulator* bm);
 	void OnUpdateDeck(BufferManipulator* bm);
 	void OnJoinGame(BufferManipulator* bm);
+	void OnSurrender(BufferManipulator* bm);
 	void OnChat(BufferManipulator* bm);
 	void OnMoveToDuelist();
 	void OnMoveToSpectator();

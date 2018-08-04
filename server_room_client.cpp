@@ -88,6 +88,9 @@ bool ServerRoomClient::ParseMsg()
 		case CTOS_CHAT:
 			OnChat(&bm);
 		break;
+		case CTOS_SURRENDER:
+			OnSurrender(&bm);
+		break;
 		case CTOS_UPDATE_DECK:
 			OnUpdateDeck(&bm);
 		break;
@@ -165,6 +168,11 @@ void ServerRoomClient::OnJoinGame(BufferManipulator* bm)
 	
 	room->AddClient(shared_from_this());
 	auth = true;
+}
+
+void ServerRoomClient::OnSurrender(BufferManipulator* bm)
+{
+	room->Surrender(shared_from_this());
 }
 
 void ServerRoomClient::OnChat(BufferManipulator* bm)
@@ -305,8 +313,7 @@ void ServerRoomClient::OnNotify(void* buffer, size_t length)
 		}
 	}
 
-	// Strip any knowledge that is not meant for this player
-	//TODO
+	// TODO: Strip any knowledge that is not meant for this player
 
 	// Send message
 	STOCMessage msg(STOC_GAME_MSG);
