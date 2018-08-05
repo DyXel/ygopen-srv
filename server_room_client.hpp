@@ -8,11 +8,10 @@
 
 #include "server_message.hpp"
 #include "deck.hpp"
-#include "duel_observer.hpp"
 
 class ServerRoom;
 
-class ServerRoomClient : public std::enable_shared_from_this<ServerRoomClient>, public DuelObserver
+class ServerRoomClient : public std::enable_shared_from_this<ServerRoomClient>
 {
 	// Client State
 	std::string name;
@@ -58,8 +57,6 @@ public:
 
 	ServerRoomClient(asio::ip::tcp::socket, ServerRoom*);
 	~ServerRoomClient();
-
-	virtual void OnNotify(void* buffer, size_t length);
 
 	std::string WhoAmI() const;
 	std::string GetName() const;

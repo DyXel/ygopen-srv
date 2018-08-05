@@ -32,6 +32,16 @@ int ServerRoom::GetMaxPlayers() const
 	return 2;
 }
 
+int ServerRoom::GetSecondTeamCap() const
+{
+	if(IsRelay())
+		return 3;
+	else if(IsTag())
+		return 2;
+	else
+		return 1;
+}
+
 int ServerRoom::GetNewPlayerPos(int except) const
 {
 	assert(!((int)players.size() == GetMaxPlayers()));
@@ -53,14 +63,25 @@ int ServerRoom::GetNewPlayerPos(int except) const
 	return pos;
 }
 
-int ServerRoom::GetSecondTeamCap() const
+
+void ServerRoom::SwapPlayers()
 {
-	if(IsRelay())
-		return 3;
-	else if(IsTag())
-		return 2;
-	else
-		return 1;
+	const int secondTeamCap = GetSecondTeamCap();
+	
+	// TODO: handle relay variable players
+	for(int i = 0; i < secondTeamCap; i++)
+	{
+		players[i]->pos = i + secondTeamCap;
+		players[i + secondTeamCap]->pos = i;
+	}
+	
+	std::set<Client> tmpPlayers;
+	for(auto& player : players)
+		tmpPlayers.insert(player.second);
+	
+	players.clear();
+	for(auto& player : tmpPlayers)
+		players.insert(std::make_pair(player->pos, player));
 }
 
 void ServerRoom::SendSpectatorNumber(Client except)
@@ -174,16 +195,29 @@ void ServerRoom::StartDuel(bool result)
 {
 	state = STATE_DUEL;
 	duel = std::make_shared<Duel>(ci);
+	firstTeamObserver.ClearPlayers();
+	secondTeamObserver.ClearPlayers();
 
-	for(auto& player : players)
-		duel->AddObserver(player.second.get());
-	for(auto& obs : spectators)
-		duel->AddObserver(obs.get());
+	if(result)
+		SwapPlayers();
+
+	const auto secondTeamCap = GetSecondTeamCap();
+	for(int i = 0; i < secondTeamCap; i++)
+	{
+		firstTeamObserver.AddPlayer(i, players[i]);
+		secondTeamObserver.AddPlayer(i + secondTeamCap, players[i + secondTeamCap]);
+	}
+
+	duel->AddObserver(&firstTeamObserver);
+	duel->AddObserver(&secondTeamObserver);
+
+	//for(auto& obs : spectators)
+	//	duel->AddObserver(obs.get());
 
 	duel->SetPlayersInfo(duelInfo.start_lp, duelInfo.start_hand, duelInfo.draw_count);
 	
 	// add cards..
-	// TODO: handle tag duels
+	// TODO: handle tag and relay duels
 	// TODO: shuffle deck
 	for(auto& player : players)
 	{
@@ -217,9 +251,8 @@ void ServerRoom::StartDuel(bool result)
 	bm->Write<uint8_t>(0x10);
 	bm->Forward(16);
 	SendToSpectators(msg);
-	
-	// TODO: swap players if second player goes first
-	duel->Start(duelInfo.duel_flag );
+
+	duel->Start(duelInfo.duel_flag);
 
 	duel->Process();
 }
@@ -255,7 +288,9 @@ ServerRoom::ServerRoom(ServerAcceptor* acceptor, DatabaseManager& dbmanager, Cor
 	banlist(bl),
 	state(STATE_LOBBY),
 	hostClient(nullptr),
-	startPlayer(nullptr)
+	startPlayer(nullptr),
+	firstTeamObserver(0),
+	secondTeamObserver(1)
 {
 	duelInfo = {};
 	// Defaults.
@@ -326,8 +361,6 @@ void ServerRoom::Leave(Client client, bool fullyDelete)
 
 	if(startPlayer == client)
 		startPlayer = nullptr;
-	if(lastPlayer == client)
-		lastPlayer = nullptr;
 
 	client->Disconnect();
 	client->leaved = true;
@@ -335,16 +368,17 @@ void ServerRoom::Leave(Client client, bool fullyDelete)
 		clients.erase(client);
 }
 
-void ServerRoom::WaitforResponse(Client client)
-{
-	lastPlayer = client;
-	// TODO: Send time left to player
-}
-
 void ServerRoom::Response(Client client, void* buffer, size_t bufferLength)
 {
-	if(client != lastPlayer)
+	if(client->type == ServerRoomClient::TYPE_SPECTATOR)
 		return;
+	
+	const bool secondTeamCap = GetSecondTeamCap();
+	if(client->pos < secondTeamCap && !firstTeamObserver.IsReponseFlagSet())
+		return;
+	else if(client->pos >= secondTeamCap && !secondTeamObserver.IsReponseFlagSet())
+		return;
+
 	if(bufferLength > 64)
 	{
 		std::puts("Buffer too long!");
@@ -699,8 +733,14 @@ void ServerRoom::TPSelect(Client client, bool amIFirst)
 		return;
 	if(client != startPlayer)
 		return;
-
-	StartDuel(amIFirst);
+	
+	bool secondTeamfirst = false;
+	if(amIFirst && client->pos == GetSecondTeamCap())
+		secondTeamfirst = true;
+	else if(!amIFirst && client->pos == 0)
+		secondTeamfirst = true;
+	
+	StartDuel(secondTeamfirst);
 }
 
 void ServerRoom::Kick(Client client, uint8_t pos)
