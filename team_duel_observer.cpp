@@ -57,6 +57,10 @@ void TeamDuelObserver::OnNotify(void* buffer, size_t length)
 	BufferManipulator bm(buffer, length);
 
 	const auto msgType = bm.Read<uint8_t>();
+	
+	// Check for blacklisted message
+	if(msgType == CoreMessage::Win)
+		return;
 
 	// Check for messages to this team
 	auto search = playerMsgs.find((int)msgType);
@@ -111,8 +115,5 @@ void TeamDuelObserver::OnNotify(void* buffer, size_t length)
 	msg.Encode();
 
 	for(auto& player : players)
-	{
-		player.second->outgoingMsgs.push_back(msg);
-		player.second->Flush();
-	}
+		player.second->PushBackMsg(msg);
 }

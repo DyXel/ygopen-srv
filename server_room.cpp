@@ -8,6 +8,8 @@
 #include "core_interface.hpp"
 #include "banlist.hpp"
 
+#include "core_messages.hpp"
+
 bool ServerRoom::IsTag() const
 {
 	return duelInfo.mode == 0x02;
@@ -97,8 +99,7 @@ void ServerRoom::SendSpectatorNumber(Client except)
 void ServerRoom::SendTo(Client client, STOCMessage msg)
 {
 	msg.Encode();
-	client->outgoingMsgs.push_back(msg);
-	client->Flush();
+	client->PushBackMsg(msg);
 }
 
 void ServerRoom::SendToTeam(int team, STOCMessage msg)
@@ -116,18 +117,12 @@ void ServerRoom::SendToTeam(int team, STOCMessage msg)
 	if(team == 0)
 	{
 		for(int i = 0; i < playersPerTeam; i++)
-		{
-			players[i]->outgoingMsgs.push_back(msg);
-			players[i]->Flush();
-		}
+			players[i]->PushBackMsg(msg);
 	}
 	else if(team == 1)
 	{
 		for(int i = playersPerTeam; i < playersPerTeam + playersPerTeam; i++)
-		{
-			players[i]->outgoingMsgs.push_back(msg);
-			players[i]->Flush();
-		}
+			players[i]->PushBackMsg(msg);
 	}
 }
 
@@ -136,16 +131,10 @@ void ServerRoom::SendToAll(STOCMessage msg)
 	msg.Encode();
 
 	for(auto& c : spectators)
-	{
-		c->outgoingMsgs.push_back(msg);
-		c->Flush();
-	}
+		c->PushBackMsg(msg);
 
 	for(auto& c : players)
-	{
-		c.second->outgoingMsgs.push_back(msg);
-		c.second->Flush();
-	}
+		c.second->PushBackMsg(msg);
 }
 
 void ServerRoom::SendToAllExcept(Client client, STOCMessage msg)
@@ -155,19 +144,13 @@ void ServerRoom::SendToAllExcept(Client client, STOCMessage msg)
 	for(auto& c : spectators)
 	{
 		if(c != client)
-		{
-			c->outgoingMsgs.push_back(msg);
-			c->Flush();
-		}
+			c->PushBackMsg(msg);
 	}
 
 	for(auto& c : players)
 	{
 		if(c.second != client)
-		{
-			c.second->outgoingMsgs.push_back(msg);
-			c.second->Flush();
-		}
+			c.second->PushBackMsg(msg);
 	}
 }
 
@@ -176,10 +159,7 @@ void ServerRoom::SendToSpectators(STOCMessage msg)
 	msg.Encode();
 
 	for(auto& c : spectators)
-	{
-		c->outgoingMsgs.push_back(msg);
-		c->Flush();
-	}
+		c->PushBackMsg(msg);
 }
 
 void ServerRoom::SendRPS()
@@ -207,6 +187,8 @@ void ServerRoom::StartDuel(bool result)
 		firstTeamObserver.AddPlayer(i, players[i]);
 		secondTeamObserver.AddPlayer(i + secondTeamCap, players[i + secondTeamCap]);
 	}
+
+	duel->AddObserver(this);
 
 	duel->AddObserver(&firstTeamObserver);
 	duel->AddObserver(&secondTeamObserver);
@@ -261,8 +243,9 @@ void ServerRoom::EndDuel()
 {
 	// TODO: replay sending should be here
 	// TODO: If match, handle it here
-	duel = nullptr; // Implicitly ends duel
-	
+
+	//duel = nullptr; // Implicitly ends duel
+
 	Close();
 }
 
@@ -324,8 +307,6 @@ void ServerRoom::Join(Client client)
 
 void ServerRoom::Leave(Client client, bool fullyDelete)
 {
-	if(client->leaved)
-		return;
 	std::cout << "Client (" << client->WhoAmI() << ") Leaves\n";
 
 	if(clients.find(client) == clients.end())
@@ -362,10 +343,25 @@ void ServerRoom::Leave(Client client, bool fullyDelete)
 	if(startPlayer == client)
 		startPlayer = nullptr;
 
-	client->Disconnect();
-	client->leaved = true;
+	client->Disconnect(false);
 	if(fullyDelete)
 		clients.erase(client);
+}
+
+void ServerRoom::OnNotify(void* buffer, size_t length)
+{
+	BufferManipulator bm(buffer, length);
+	
+	const auto msgType = bm.Read<uint8_t>();
+	
+	if(msgType == CoreMessage::Win)
+	{
+		STOCMessage msg(STOC_GAME_MSG);
+		msg.GetBM()->Write(std::make_pair(buffer, length));
+		SendToAll(msg);
+
+		EndDuel();
+	}
 }
 
 void ServerRoom::Response(Client client, void* buffer, size_t bufferLength)

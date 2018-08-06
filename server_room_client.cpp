@@ -42,13 +42,12 @@ void ServerRoomClient::DoWrite()
 			outgoingMsgs.pop_front();
 			if(!outgoingMsgs.empty())
 				DoWrite();
-			else
-				flushing = false;
+			else if(closing)
+				Disconnect(true);
 		}
 		else
 		{
 			room->Leave(shared_from_this());
-			flushing = false;
 		}
 	});
 }
@@ -222,8 +221,7 @@ void ServerRoomClient::OnTPSelect(BufferManipulator* bm)
 ServerRoomClient::ServerRoomClient(asio::ip::tcp::socket tmpSocket, ServerRoom* room) :
 	socket(std::move(tmpSocket)),
 	room(room),
-	flushing(false),
-	leaved(false)
+	closing(false)
 {}
 
 ServerRoomClient::~ServerRoomClient()
@@ -268,21 +266,24 @@ void ServerRoomClient::Connect()
 	DoReadHeader();
 }
 
-void ServerRoomClient::Disconnect()
+void ServerRoomClient::Disconnect(bool force)
 {
-	socket.shutdown(asio::ip::tcp::socket::shutdown_both);
-	socket.close();
-}
-
-void ServerRoomClient::Flush()
-{
-	if(flushing)
-		return;
-
-	if(!outgoingMsgs.empty())
+	if(force || outgoingMsgs.empty())
 	{
-		flushing = true;
-		DoWrite();
+		socket.shutdown(asio::ip::tcp::socket::shutdown_both);
+		socket.close();
+		return;
+	}
+	else
+	{
+		closing = true;
 	}
 }
 
+void ServerRoomClient::PushBackMsg(STOCMessage msg)
+{
+	const bool writeInProgress = !outgoingMsgs.empty();
+	outgoingMsgs.push_back(msg);
+	if(!writeInProgress)
+		DoWrite();
+}

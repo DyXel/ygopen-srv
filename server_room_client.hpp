@@ -39,18 +39,17 @@ class ServerRoomClient : public std::enable_shared_from_this<ServerRoomClient>
 	asio::ip::tcp::socket socket;
 	ServerRoom* room;
 	CTOSMessage receivedMsg;
+	bool closing;
 
 	void DoReadHeader();
 	void DoReadBody();
 
 	void DoWrite();
+
+	std::deque<STOCMessage> outgoingMsgs;
 public:
 	enum { TYPE_PLAYER, TYPE_SPECTATOR };
 	Deck deck;
-
-	bool flushing;
-	bool leaved;
-	// NOTE: i think the flags above are a mistake
 
 	int type; // Player or Spectator?
 	int pos; // Player position, index start from 0
@@ -63,11 +62,9 @@ public:
 	int GetType(bool getHost) const;
 
 	void Connect();
-	void Disconnect();
+	void Disconnect(bool force);
 
-	std::deque<STOCMessage> outgoingMsgs;
-
-	void Flush();
+	void PushBackMsg(STOCMessage msg);
 };
 
 #endif // __SERVER_ROOM_CLIENT_HPP__

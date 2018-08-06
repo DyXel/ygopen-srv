@@ -17,7 +17,7 @@ public:
 	void AddPlayer(int pos, std::shared_ptr<ServerRoomClient> player);
 	void ClearPlayers();
 	const bool IsReponseFlagSet() const;
-	virtual void OnNotify(void* buff, size_t length);
+	virtual void OnNotify(void* buffer, size_t length);
 };
 
 #endif // __TEAM_DUEL_OBSERVER_HPP__

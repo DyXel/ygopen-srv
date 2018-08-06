@@ -9,6 +9,7 @@
 #include "server_room_client.hpp"
 #include "server_message.hpp"
 
+#include "duel_observer.hpp"
 #include "team_duel_observer.hpp"
 
 class ServerAcceptor;
@@ -18,9 +19,9 @@ class Banlist;
 
 typedef std::shared_ptr<ServerRoomClient> Client;
 
-class ServerRoom : public std::enable_shared_from_this<ServerRoom>
+class ServerRoom : public DuelObserver, public std::enable_shared_from_this<ServerRoom>
 {
-	ServerAcceptor* acceptor; // NEEDED
+	ServerAcceptor* acceptor;
 	DatabaseManager& dbm;
 	CoreInterface& ci;
 	Banlist& banlist;
@@ -70,6 +71,8 @@ public:
 	~ServerRoom();
 	void Join(Client client);
 	void Leave(Client client, bool fullyDelete = true);
+	
+	virtual void OnNotify(void* buffer, size_t length);
 
 	void Response(Client client, void* buffer, size_t bufferLength);
 	void UpdateDeck(Client client, std::vector<unsigned int>& mainExtra, std::vector<unsigned int>& side);
