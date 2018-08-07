@@ -2,7 +2,7 @@
 #define __SERVER_ROOM_CLIENT_HPP__
 #include <memory>
 #include <string>
-#include <string>
+#include <memory>
 #include <asio.hpp>
 #include <deque>
 
@@ -36,10 +36,12 @@ class ServerRoomClient : public std::enable_shared_from_this<ServerRoomClient>
 	void OnKickPlayer(BufferManipulator* bm);
 	void OnStart();
 
+	// Asio related
 	asio::ip::tcp::socket socket;
-	ServerRoom* room;
+	std::shared_ptr<ServerRoom> room;
 	CTOSMessage receivedMsg;
 	bool closing;
+	std::string whoami;
 
 	void DoReadHeader();
 	void DoReadBody();
@@ -54,11 +56,11 @@ public:
 	int type; // Player or Spectator?
 	int pos; // Player position, index start from 0
 
-	ServerRoomClient(asio::ip::tcp::socket, ServerRoom*);
+	ServerRoomClient(asio::ip::tcp::socket, std::shared_ptr<ServerRoom>);
 	~ServerRoomClient();
 
-	std::string WhoAmI() const;
-	std::string GetName() const;
+	const std::string& WhoAmI() const;
+	const std::string& GetName() const;
 	int GetType(bool getHost) const;
 
 	void Connect();

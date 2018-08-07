@@ -13,8 +13,8 @@ void ServerRoomClient::DoReadHeader()
 	{
 		if(!ec && receivedMsg.DecodeHeader())
 			DoReadBody();
-		else
-			room->Leave(shared_from_this());
+		else if(ec != asio::error::operation_aborted)
+			Disconnect(false);
 	});
 }
 
@@ -26,8 +26,8 @@ void ServerRoomClient::DoReadBody()
 	{
 		if(!ec && ParseMsg())
 			DoReadHeader();
-		else
-			room->Leave(shared_from_this());
+		else if(ec != asio::error::operation_aborted)
+			Disconnect(false);
 	});
 }
 
@@ -45,9 +45,9 @@ void ServerRoomClient::DoWrite()
 			else if(closing)
 				Disconnect(true);
 		}
-		else
+		else if(ec != asio::error::operation_aborted)
 		{
-			room->Leave(shared_from_this());
+			Disconnect(false);
 		}
 	});
 }
@@ -218,34 +218,36 @@ void ServerRoomClient::OnTPSelect(BufferManipulator* bm)
 	room->TPSelect(shared_from_this(), (bool)bm->Read<uint8_t>());
 }
 
-ServerRoomClient::ServerRoomClient(asio::ip::tcp::socket tmpSocket, ServerRoom* room) :
+ServerRoomClient::ServerRoomClient(asio::ip::tcp::socket tmpSocket, std::shared_ptr<ServerRoom> room) :
 	socket(std::move(tmpSocket)),
 	room(room),
 	closing(false)
-{}
-
-ServerRoomClient::~ServerRoomClient()
-{
-	std::cout << "SRC: Calling destructor" << std::endl;
-}
-
-std::string ServerRoomClient::WhoAmI() const
 {
 	std::ostringstream out;
 	asio::ip::tcp::endpoint endpoint = socket.remote_endpoint();
 
 	asio::ip::address addr = endpoint.address();
-	unsigned short port = endpoint.port();
+	auto port = endpoint.port();
 
 	out << "Address: ";
 	out << addr.to_string();
 	out << ". Port: ";
 	out << port;
 
-	return out.str();
+	whoami = out.str();
 }
 
-std::string ServerRoomClient::GetName() const
+ServerRoomClient::~ServerRoomClient()
+{
+	std::cout << "SRC: Calling destructor" << std::endl;
+}
+
+const std::string& ServerRoomClient::WhoAmI() const
+{
+	return whoami;
+}
+
+const std::string& ServerRoomClient::GetName() const
 {
 	return name;
 }
@@ -270,6 +272,7 @@ void ServerRoomClient::Disconnect(bool force)
 {
 	if(force || outgoingMsgs.empty())
 	{
+		room->Leave(shared_from_this());
 		socket.shutdown(asio::ip::tcp::socket::shutdown_both);
 		socket.close();
 		return;

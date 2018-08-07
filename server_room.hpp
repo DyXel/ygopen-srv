@@ -12,16 +12,14 @@
 #include "duel_observer.hpp"
 #include "team_duel_observer.hpp"
 
-class ServerAcceptor;
 class DatabaseManager;
 class CoreInterface;
 class Banlist;
 
 typedef std::shared_ptr<ServerRoomClient> Client;
 
-class ServerRoom : public DuelObserver, public std::enable_shared_from_this<ServerRoom>
+class ServerRoom : public DuelObserver
 {
-	ServerAcceptor* acceptor;
 	DatabaseManager& dbm;
 	CoreInterface& ci;
 	Banlist& banlist;
@@ -67,10 +65,10 @@ public:
 
 	void Close();
 
-	ServerRoom(ServerAcceptor* acceptor, DatabaseManager& dbmanager, CoreInterface& corei, Banlist& bl);
+	ServerRoom(DatabaseManager& dbmanager, CoreInterface& corei, Banlist& bl);
 	~ServerRoom();
 	void Join(Client client);
-	void Leave(Client client, bool fullyDelete = true);
+	void Leave(Client client);
 	
 	virtual void OnNotify(void* buffer, size_t length);
 

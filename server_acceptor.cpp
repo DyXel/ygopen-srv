@@ -2,32 +2,42 @@
 #include <fstream>
 #include <sstream>
 #include <csignal>
-
-void ServerAcceptor::Close()
-{
-	acceptor.close();
-	for(auto& room : rooms)
-		room->Close();
-}
+#include <algorithm>
 
 std::shared_ptr<ServerRoom> ServerAcceptor::GetAvailableRoom()
 {
-	if(rooms.size() == 0)
+	if(rooms.empty())
 	{
-		auto room = std::make_shared<ServerRoom>(this, dbm, ci, bl);
-		rooms.insert(room);
+		auto room = std::make_shared<ServerRoom>(dbm, ci, bl);
+		rooms.push_back(room);
 		return room;
 	}
 
-	auto search = std::find_if(rooms.begin(), rooms.end(), [](std::shared_ptr<ServerRoom> room) -> bool
+	// prune expired rooms
 	{
-		return room->GetPlayersNumber() < room->GetMaxPlayers();
+		auto it = rooms.begin();
+		while(it != rooms.end())
+		{
+			if(it->expired())
+			{
+				it = rooms.erase(it);
+				continue;
+			}
+			
+			++it;
+		}
+	}
+
+	auto search = std::find_if(rooms.begin(), rooms.end(), [](std::weak_ptr<ServerRoom> room) -> bool
+	{
+		auto tmpPtr = room.lock();
+		return tmpPtr->GetPlayersNumber() < tmpPtr->GetMaxPlayers();
 	});
 	if(search != rooms.end())
-		return *search;
+		return search->lock();
 
-	auto room = std::make_shared<ServerRoom>(this, dbm, ci, bl);
-	rooms.insert(room);
+	auto room = std::make_shared<ServerRoom>(dbm, ci, bl);
+	rooms.push_back(room);
 	return room;
 }
 
@@ -35,7 +45,7 @@ void ServerAcceptor::DoSignalWait()
 {
 	signals.async_wait([this](std::error_code /*ec*/, int /*signo*/)
 	{
-		Close();
+		acceptor.close();
 	});
 }
 
@@ -49,18 +59,11 @@ void ServerAcceptor::DoAccept()
 		if(!ec)
 		{
 			auto room = GetAvailableRoom();
-			std::make_shared<ServerRoomClient>(std::move(tmpSocket), room.get())->Connect();
+			std::make_shared<ServerRoomClient>(std::move(tmpSocket), room)->Connect();
 		}
 
 		DoAccept();
 	});
-}
-
-void ServerAcceptor::DeleteRoom(std::shared_ptr<ServerRoom> room)
-{
-	auto search = rooms.find(room);
-	if(search != rooms.end())
-		rooms.erase(room);
 }
 
 ServerAcceptor::ServerAcceptor(asio::io_service& ioService, asio::ip::tcp::endpoint& endpoint) :
@@ -85,7 +88,7 @@ ServerAcceptor::ServerAcceptor(asio::io_service& ioService, asio::ip::tcp::endpo
 
 	if(!ci.LoadLibrary())
 	{
-		Close();
+		acceptor.close();
 		return;
 	}
 
@@ -99,7 +102,7 @@ ServerAcceptor::ServerAcceptor(asio::io_service& ioService, asio::ip::tcp::endpo
 	std::string s = buffer.str();
 	if(!bl.FromJSON(s))
 	{
-		Close();
+		acceptor.close();
 		return;
 	}
 

@@ -2,7 +2,6 @@
 
 #include <iostream>
 #include "string_utils.hpp"
-#include "server_acceptor.hpp"
 
 #include "database_manager.hpp"
 #include "core_interface.hpp"
@@ -252,11 +251,10 @@ void ServerRoom::EndDuel()
 void ServerRoom::Close()
 {
 	for(auto& client : clients)
-		Leave(client, false);
-	
-	clients.clear();
-	
-	acceptor->DeleteRoom(shared_from_this());
+		client->Disconnect(false);
+
+	firstTeamObserver.ClearPlayers();
+	secondTeamObserver.ClearPlayers();
 }
 
 Client ServerRoom::GetHost() const
@@ -264,8 +262,7 @@ Client ServerRoom::GetHost() const
 	return hostClient;
 }
 
-ServerRoom::ServerRoom(ServerAcceptor* acceptor, DatabaseManager& dbmanager, CoreInterface& corei, Banlist& bl) :
-	acceptor(acceptor),
+ServerRoom::ServerRoom(DatabaseManager& dbmanager, CoreInterface& corei, Banlist& bl) :
 	dbm(dbmanager),
 	ci(corei),
 	banlist(bl),
@@ -305,7 +302,7 @@ void ServerRoom::Join(Client client)
 	clients.insert(client);
 }
 
-void ServerRoom::Leave(Client client, bool fullyDelete)
+void ServerRoom::Leave(Client client)
 {
 	std::cout << "Client (" << client->WhoAmI() << ") Leaves\n";
 
@@ -343,9 +340,7 @@ void ServerRoom::Leave(Client client, bool fullyDelete)
 	if(startPlayer == client)
 		startPlayer = nullptr;
 
-	client->Disconnect(false);
-	if(fullyDelete)
-		clients.erase(client);
+	clients.erase(client);
 }
 
 void ServerRoom::OnNotify(void* buffer, size_t length)
@@ -529,7 +524,7 @@ void ServerRoom::AddToLobby(Client client)
 void ServerRoom::AddToGame(Client client)
 {
 	//TODO
-	Leave(client);
+	client->Disconnect(false);
 }
 
 void ServerRoom::Chat(Client client, std::string& chatMsg)
@@ -748,7 +743,7 @@ void ServerRoom::Kick(Client client, uint8_t pos)
 	
 	auto result = players.find(pos);
 	if(result != players.end() && result->second != client)
-		Leave(result->second);
+		client->Disconnect(false);
 }
 
 void ServerRoom::Start(Client client)
