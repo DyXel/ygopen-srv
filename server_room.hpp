@@ -57,7 +57,7 @@ class ServerRoom : public DuelObserver
 	void StartDuel(bool result);
 	void EndDuel();
 public:
-	enum { STATE_LOBBY, STATE_DUEL, STATE_RPS, STATE_SIDE};
+	enum { STATE_LOBBY, STATE_DUEL, STATE_RPS, STATE_SIDE, STATE_END};
 
 	int GetPlayersNumber() const;
 	int GetMaxPlayers() const;

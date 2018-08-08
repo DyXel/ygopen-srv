@@ -2,6 +2,7 @@
 #include "server_room.hpp"
 
 #include <sstream>
+#include <exception>
 
 #include "string_utils.hpp"
 
@@ -87,6 +88,7 @@ bool ServerRoomClient::ParseMsg()
 		break;
 		case CTOS_SURRENDER:
 			OnSurrender(&bm);
+			// TODO: reason of surrender might be needed
 		break;
 		case CTOS_UPDATE_DECK:
 			OnUpdateDeck(&bm);
@@ -273,9 +275,15 @@ void ServerRoomClient::Disconnect(bool force)
 	if(force || outgoingMsgs.empty())
 	{
 		room->Leave(shared_from_this());
-		socket.shutdown(asio::ip::tcp::socket::shutdown_both);
-		socket.close();
-		return;
+		try
+		{
+			socket.shutdown(asio::ip::tcp::socket::shutdown_both);
+			socket.close();
+		}
+		catch(std::exception& e)
+		{
+			std::printf("WARNING: exception when trying to close client socket: %s\n", e.what());
+		}
 	}
 	else
 	{

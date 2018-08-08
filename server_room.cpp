@@ -240,16 +240,24 @@ void ServerRoom::StartDuel(bool result)
 
 void ServerRoom::EndDuel()
 {
-	// TODO: replay sending should be here
 	// TODO: If match, handle it here
 
 	//duel = nullptr; // Implicitly ends duel
+
+	// TODO: replay sending should be here
 
 	Close();
 }
 
 void ServerRoom::Close()
 {
+	if(state == STATE_END)
+		return;
+	state = STATE_END;
+
+	STOCMessage msg(STOC_DUEL_END);
+	SendToAll(msg);
+
 	for(auto& client : clients)
 		client->Disconnect(false);
 
@@ -308,6 +316,9 @@ void ServerRoom::Leave(Client client)
 
 	if(clients.find(client) == clients.end())
 		return;
+
+	// avoids endless recursion when calling Surrender
+	clients.erase(client);
 	
 	if(spectators.find(client) != spectators.end())
 	{
@@ -318,6 +329,9 @@ void ServerRoom::Leave(Client client)
 	{
 		players.erase(client->pos);
 		players_ready.erase(client->pos);
+		
+		if(state == STATE_DUEL)
+			Surrender(client);
 
 		STOCMessage msg(STOC_HS_PLAYER_CHANGE);
 		msg.GetBM()->Write<uint8_t>((client->pos << 0x04) + PLAYERCHANGE_LEAVE);
@@ -333,14 +347,12 @@ void ServerRoom::Leave(Client client)
 		else
 			hostClient = nullptr;
 
-		if(hostClient != nullptr)
+		if(hostClient != nullptr && state == STATE_LOBBY)
 			SendTypeChange(hostClient);
 	}
 
 	if(startPlayer == client)
 		startPlayer = nullptr;
-
-	clients.erase(client);
 }
 
 void ServerRoom::OnNotify(void* buffer, size_t length)
@@ -523,7 +535,7 @@ void ServerRoom::AddToLobby(Client client)
 
 void ServerRoom::AddToGame(Client client)
 {
-	//TODO
+	// TODO
 	client->Disconnect(false);
 }
 
@@ -635,7 +647,7 @@ void ServerRoom::Ready(Client client, bool ready)
 		if(ready)
 		{
 			result = client->deck.CheckUsability(banlist);
-			ready = client->deck.CanBeUsed();
+			//ready = client->deck.CanBeUsed();
 		}
 		else
 		{
