@@ -1,6 +1,7 @@
-#include "server_room.hpp" 
-
 #include <iostream>
+#include <random>
+
+#include "server_room.hpp" 
 #include "string_utils.hpp"
 
 #include "database_manager.hpp"
@@ -173,7 +174,11 @@ void ServerRoom::SendRPS()
 void ServerRoom::StartDuel(bool result)
 {
 	state = STATE_DUEL;
-	duel = std::make_shared<Duel>(ci);
+
+	std::random_device rd;
+	std::mt19937 rnd(rd());
+
+	duel = std::make_shared<Duel>(ci, rnd());
 	firstTeamObserver.ClearPlayers();
 	secondTeamObserver.ClearPlayers();
 
@@ -198,8 +203,19 @@ void ServerRoom::StartDuel(bool result)
 	duel->SetPlayersInfo(duelInfo.start_lp, duelInfo.start_hand, duelInfo.draw_count);
 	
 	// add cards..
-	// TODO: handle tag and relay duels
-	// TODO: shuffle deck
+	// TODO: check if tag and relay duels require special treatment
+	if(duelInfo.no_shuffle_deck && !decksSorted)
+	{
+		for(auto& player : players)
+			std::reverse(player.second->deck.main.begin(), player.second->deck.main.end());
+		decksSorted = true;
+	}
+	else
+	{
+		for(auto& player : players)
+			std::shuffle(player.second->deck.main.begin(), player.second->deck.main.end(), rnd);
+	}
+
 	for(auto& player : players)
 	{
 		for(auto& code : player.second->deck.main)
@@ -275,6 +291,7 @@ ServerRoom::ServerRoom(DatabaseManager& dbmanager, CoreInterface& corei, Banlist
 	ci(corei),
 	banlist(bl),
 	state(STATE_LOBBY),
+	decksSorted(false),
 	hostClient(nullptr),
 	startPlayer(nullptr),
 	firstTeamObserver(0),
@@ -302,7 +319,6 @@ ServerRoom::~ServerRoom()
 {
 	std::cout << "Server Room Destructor called" << std::endl;
 }
-
 
 void ServerRoom::Join(Client client)
 {

@@ -28,6 +28,7 @@ class ServerRoom : public DuelObserver
 
 	int state;
 	ygo::HostInfo duelInfo;
+	bool decksSorted; // Used to avoid multiple sorts through duels
 
 	bool IsTag() const;
 	bool IsRelay() const;
