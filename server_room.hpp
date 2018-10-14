@@ -46,6 +46,7 @@ class ServerRoom : public DuelObserver
 	Client startPlayer; // Player who decides the first turn duelist
 	TeamDuelObserver firstTeamObserver;
 	TeamDuelObserver secondTeamObserver;
+	TeamDuelObserver spectatorTeamObserver;
 
 	void SendSpectatorNumber(Client except = nullptr);
 	void SendTo(Client client, STOCMessage msg);

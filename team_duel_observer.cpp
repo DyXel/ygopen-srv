@@ -1,11 +1,11 @@
 #include "team_duel_observer.hpp" 
 #include "server_room_client.hpp"
 
-#include "core_messages.hpp"
+#include "enums/core_message.hpp"
 
 #include <set>
 
-static const std::set<int> playerMsgs =
+static const std::set<CoreMessage> playerMsgs =
 {
 	CoreMessage::SelectBattleCmd,
 	CoreMessage::SelectIdleCmd,
@@ -31,7 +31,7 @@ static const std::set<int> playerMsgs =
 	CoreMessage::AnnounceCardFilter
 };
 
-static const std::set<int> knowledgeMsgs =
+static const std::set<CoreMessage> knowledgeMsgs =
 {
 	CoreMessage::SelectCard,
 	CoreMessage::SelectTribute,
@@ -66,14 +66,14 @@ const bool TeamDuelObserver::IsReponseFlagSet() const
 bool TeamDuelObserver::IsMsgForThisTeam(void* buffer, size_t length)
 {
 	BufferManipulator bm(buffer, length);
-	const auto msgType = bm.Read<uint8_t>();
+	const auto msgType = (CoreMessage)bm.Read<uint8_t>();
 	
 	// Check for blacklisted message
 	if(msgType == CoreMessage::Win)
 		return false;
 
 	// Check for messages to this team
-	const auto search = playerMsgs.find((int)msgType) != playerMsgs.end();
+	const auto search = playerMsgs.find(msgType) != playerMsgs.end();
 	if(search)
 	{
 		if(bm.Read<uint8_t>() == team)
@@ -114,6 +114,9 @@ bool TeamDuelObserver::IsMsgForThisTeam(void* buffer, size_t length)
 					return false;
 			}
 			break;
+			default:
+				std::abort();
+			break;
 		}
 	}
 
@@ -126,9 +129,9 @@ bool TeamDuelObserver::StripKnowledge(void* buffer, size_t length, std::string& 
 	std::memcpy(&newMsg[0], buffer, length);
 	BufferManipulator bm(&newMsg[0], length);
 
-	const auto msgType = bm.Read<uint8_t>();
+	const auto msgType = (CoreMessage)bm.Read<uint8_t>();
 
-	if(knowledgeMsgs.find((int)msgType) == knowledgeMsgs.end())
+	if(knowledgeMsgs.find(msgType) == knowledgeMsgs.end())
 		return false;
 
 	auto DeleteNonPublicKnowledge = [&bm](const uint8_t forPlayer)
@@ -246,6 +249,9 @@ bool TeamDuelObserver::StripKnowledge(void* buffer, size_t length, std::string& 
 			}
 		}
 		break;
+		default:
+			std::abort();
+		break;
 	}
 	
 	return true;
@@ -266,7 +272,7 @@ void TeamDuelObserver::OnNotify(void* buffer, size_t length)
 	else
 		msg.GetBM()->Write(std::make_pair(buffer, length));
 	msg.Encode();
-
+	
 	for(auto& player : players)
 		player.second->PushBackMsg(msg);
 }

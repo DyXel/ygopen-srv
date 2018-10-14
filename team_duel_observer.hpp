@@ -9,7 +9,7 @@ class ServerRoomClient;
 
 class TeamDuelObserver : public DuelObserver
 {
-	short team; // 0 or 1
+	short team; // 0 or 1 (2 for spectators)
 	bool responseFlag;
 	std::map<int, std::shared_ptr<ServerRoomClient>> players;
 	

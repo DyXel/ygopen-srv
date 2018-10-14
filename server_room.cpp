@@ -8,7 +8,8 @@
 #include "core_interface.hpp"
 #include "banlist.hpp"
 
-#include "core_messages.hpp"
+#include "enums/core_message.hpp"
+#include "enums/type.hpp"
 
 bool ServerRoom::IsTag() const
 {
@@ -181,6 +182,7 @@ void ServerRoom::StartDuel(bool result)
 	duel = std::make_shared<Duel>(ci, rnd());
 	firstTeamObserver.ClearPlayers();
 	secondTeamObserver.ClearPlayers();
+	spectatorTeamObserver.ClearPlayers();
 
 	if(result)
 		SwapPlayers();
@@ -191,11 +193,21 @@ void ServerRoom::StartDuel(bool result)
 		firstTeamObserver.AddPlayer(i, players[i]);
 		secondTeamObserver.AddPlayer(i + secondTeamCap, players[i + secondTeamCap]);
 	}
+	
+	{
+		size_t i = 0;
+		for(auto& obs : spectators)
+		{
+			spectatorTeamObserver.AddPlayer(i, obs);
+			i++;
+		}
+	}
 
 	duel->AddObserver(this);
 
 	duel->AddObserver(&firstTeamObserver);
 	duel->AddObserver(&secondTeamObserver);
+	duel->AddObserver(&spectatorTeamObserver);
 
 	//for(auto& obs : spectators)
 	//	duel->AddObserver(obs.get());
@@ -279,6 +291,7 @@ void ServerRoom::Close()
 
 	firstTeamObserver.ClearPlayers();
 	secondTeamObserver.ClearPlayers();
+	spectatorTeamObserver.ClearPlayers();
 }
 
 Client ServerRoom::GetHost() const
@@ -295,7 +308,8 @@ ServerRoom::ServerRoom(DatabaseManager& dbmanager, CoreInterface& corei, Banlist
 	hostClient(nullptr),
 	startPlayer(nullptr),
 	firstTeamObserver(0),
-	secondTeamObserver(1)
+	secondTeamObserver(1),
+	spectatorTeamObserver(2)
 {
 	duelInfo = {};
 	// Defaults.
@@ -375,7 +389,7 @@ void ServerRoom::OnNotify(void* buffer, size_t length)
 {
 	BufferManipulator bm(buffer, length);
 	
-	const auto msgType = bm.Read<uint8_t>();
+	const auto msgType = (CoreMessage)bm.Read<uint8_t>();
 	
 	if(msgType == CoreMessage::Win)
 	{
@@ -455,8 +469,8 @@ void ServerRoom::UpdateDeck(Client client, std::vector<unsigned int>& mainExtra,
 			continue;
 		}
 
-		if((cd->type & TYPE_FUSION) || (cd->type & TYPE_SYNCHRO)  ||
-		   (cd->type & TYPE_XYZ) || (cd->type & TYPE_LINK))
+		if((cd->type & (unsigned int)Type::Fusion) || (cd->type & (unsigned int)Type::Synchro)  ||
+		   (cd->type & (unsigned int)Type::Xyz) || (cd->type & (unsigned int)Type::Link))
 		{
 			extra.push_back(code);
 		}
