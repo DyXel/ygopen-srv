@@ -37,3 +37,5 @@ CMakeLists.txt.user
 # Ignore files created by premake4
 Makefile
 *.make
+# Ignore files created by kate
+*.kate-swp
