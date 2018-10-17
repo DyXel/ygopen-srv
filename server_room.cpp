@@ -179,10 +179,15 @@ void ServerRoom::StartDuel(bool result)
 	std::random_device rd;
 	std::mt19937 rnd(rd());
 
+	firstTeamObserver.Deinitialize();
+	secondTeamObserver.Deinitialize();
+	spectatorTeamObserver.Deinitialize();
+
 	duel = std::make_shared<Duel>(ci, rnd());
-	firstTeamObserver.ClearPlayers();
-	secondTeamObserver.ClearPlayers();
-	spectatorTeamObserver.ClearPlayers();
+	std::weak_ptr<Duel> weakDuel = duel;
+	firstTeamObserver.SetDuel(weakDuel);
+	secondTeamObserver.SetDuel(weakDuel);
+	spectatorTeamObserver.SetDuel(weakDuel);
 
 	if(result)
 		SwapPlayers();
@@ -289,9 +294,9 @@ void ServerRoom::Close()
 	for(auto& client : clients)
 		client->Disconnect(false);
 
-	firstTeamObserver.ClearPlayers();
-	secondTeamObserver.ClearPlayers();
-	spectatorTeamObserver.ClearPlayers();
+	firstTeamObserver.Deinitialize();
+	secondTeamObserver.Deinitialize();
+	spectatorTeamObserver.Deinitialize();
 }
 
 Client ServerRoom::GetHost() const
@@ -469,8 +474,8 @@ void ServerRoom::UpdateDeck(Client client, std::vector<unsigned int>& mainExtra,
 			continue;
 		}
 
-		if((cd->type & (unsigned int)Type::Fusion) || (cd->type & (unsigned int)Type::Synchro)  ||
-		   (cd->type & (unsigned int)Type::Xyz) || (cd->type & (unsigned int)Type::Link))
+		if((cd->type & TypeFusion) || (cd->type & TypeSynchro)  ||
+		   (cd->type & TypeXyz) || (cd->type & TypeLink))
 		{
 			extra.push_back(code);
 		}

@@ -5,6 +5,7 @@
 
 #include <set>
 
+// Messages that are meant to set the response flag and be answered by the team
 static const std::set<CoreMessage> playerMsgs =
 {
 	CoreMessage::SelectBattleCmd,
@@ -31,6 +32,7 @@ static const std::set<CoreMessage> playerMsgs =
 	CoreMessage::AnnounceCardFilter
 };
 
+// Messages that require removing knowledge in case they are not meant for the team
 static const std::set<CoreMessage> knowledgeMsgs =
 {
 	CoreMessage::SelectCard,
@@ -43,6 +45,39 @@ static const std::set<CoreMessage> knowledgeMsgs =
 	CoreMessage::Draw
 };
 
+// Messages that require performing queries before the actual message is sent
+static const std::set<CoreMessage> beforeMsgQueries =
+{
+	CoreMessage::SelectBattleCmd,
+	CoreMessage::SelectIdleCmd,
+	CoreMessage::ShuffleDeck,
+	CoreMessage::NewTurn,
+	CoreMessage::NewPhase,
+	CoreMessage::FlipSummoning
+};
+
+// Messages that require performing queries after the actual message is sent
+static const std::set<CoreMessage> afterMsgQueries =
+{
+	CoreMessage::ShuffleDeck,
+	CoreMessage::ShuffleHand,
+	CoreMessage::ShuffleExtra,
+	CoreMessage::SwapGraveDeck,
+	CoreMessage::ReverseDeck,
+	CoreMessage::ShuffleSetCard,
+	CoreMessage::NewPhase,
+	CoreMessage::Move,
+	CoreMessage::PosChange,
+	CoreMessage::Swap
+	CoreMessage::Summoned,
+	CoreMessage::SpSummoned,
+	CoreMessage::FlipSummoned,
+	CoreMessage::Chained,
+	CoreMessage::ChainEnd,
+	CoreMessage::DamageStepStart,
+	CoreMessage::DamageStepEnd
+};
+
 TeamDuelObserver::TeamDuelObserver(short team) :
 	team(team),
 	responseFlag(false)
@@ -53,9 +88,15 @@ void TeamDuelObserver::AddPlayer(int pos, std::shared_ptr<ServerRoomClient> play
 	players.insert(std::make_pair(pos, player));
 }
 
-void TeamDuelObserver::ClearPlayers()
+void TeamDuelObserver::SetDuel(std::weak_ptr<Duel> weakDuel)
+{
+	duel = weakDuel;
+}
+
+void TeamDuelObserver::Deinitialize()
 {
 	players.clear();
+	duel.reset();
 }
 
 const bool TeamDuelObserver::IsReponseFlagSet() const
@@ -257,6 +298,53 @@ bool TeamDuelObserver::StripKnowledge(void* buffer, size_t length, std::string& 
 	return true;
 }
 
+/************************/
+void TeamDuelObserver::QueryMonsterZone(int playerPos, int flag, bool useCache)
+{
+	
+}
+
+void TeamDuelObserver::QuerySpellZone(int playerPos, int flag, bool useCache)
+{
+	
+}
+
+void TeamDuelObserver::QueryHand(int playerPos, int flag, bool useCache)
+{
+	
+}
+
+void TeamDuelObserver::QueryGrave(int playerPos, int flag, bool useCache)
+{
+	
+}
+
+void TeamDuelObserver::QueryExtra(int playerPos, int flag, bool useCache)
+{
+	
+}
+
+void TeamDuelObserver::QuerySingle(int playerPos, int location, int sequence, int flag = singleDefQueryFlag)
+{
+	
+}
+
+void TeamDuelObserver::QueryDeckPseudo(int playerPos, int flag = deckDefQueryFlag);
+{
+	
+}
+/************************/
+
+void TeamDuelObserver::HandleBeforeMsgQueries(void* buffer, size_t length)
+{
+	
+}
+
+void TeamDuelObserver::HandleAfterMsgQueries(void* buffer, size_t length)
+{
+	
+}
+
 void TeamDuelObserver::OnNotify(void* buffer, size_t length)
 {
 	responseFlag = false;
@@ -265,14 +353,18 @@ void TeamDuelObserver::OnNotify(void* buffer, size_t length)
 		return;
 
 	STOCMessage msg(STOC_GAME_MSG);
-	
+
 	std::string newMsg;
 	if(StripKnowledge(buffer, length, newMsg))
 		msg.GetBM()->Write(std::make_pair((void*)&newMsg[0], length));
 	else
 		msg.GetBM()->Write(std::make_pair(buffer, length));
 	msg.Encode();
-	
+
+	HandleBeforeMsgQueries(buffer, length);
+
 	for(auto& player : players)
 		player.second->PushBackMsg(msg);
+
+	HandleAfterMsgQueries(buffer, length);
 }
