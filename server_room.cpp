@@ -9,6 +9,8 @@
 #include "banlist.hpp"
 
 #include "enums/core_message.hpp"
+#include "enums/location.hpp"
+#include "enums/position.hpp"
 #include "enums/type.hpp"
 
 bool ServerRoom::IsTag() const
@@ -236,10 +238,10 @@ void ServerRoom::StartDuel(bool result)
 	for(auto& player : players)
 	{
 		for(auto& code : player.second->deck.main)
-			duel->NewCard(code, player.first, player.first, 0x1, 0, 0x8);
+			duel->NewCard(code, player.first, player.first, LocationMainDeck, 0, PositionFaceDownDefense);
 		
 		for(auto& code : player.second->deck.extra)
-			duel->NewCard(code, player.first, player.first, 0x40, 0, 0x8);
+			duel->NewCard(code, player.first, player.first, LocationExtraDeck, 0, PositionFaceDownDefense);
 	}
 	
 	STOCMessage msg(STOC_GAME_MSG);
@@ -248,10 +250,10 @@ void ServerRoom::StartDuel(bool result)
 	bm->Write<uint8_t>(0);
 	bm->Write<int32_t>(duelInfo.start_lp);
 	bm->Write<int32_t>(duelInfo.start_lp);
-	bm->Write<int16_t>(duel->QueryFieldCount(0, 0x1));
-	bm->Write<int16_t>(duel->QueryFieldCount(0, 0x40));
-	bm->Write<int16_t>(duel->QueryFieldCount(1, 0x1));
-	bm->Write<int16_t>(duel->QueryFieldCount(1, 0x40));
+	bm->Write<int16_t>(duel->QueryFieldCount(0, LocationMainDeck));
+	bm->Write<int16_t>(duel->QueryFieldCount(0, LocationExtraDeck));
+	bm->Write<int16_t>(duel->QueryFieldCount(1, LocationMainDeck));
+	bm->Write<int16_t>(duel->QueryFieldCount(1, LocationExtraDeck));
 	SendToTeam(0, msg);
 
 	bm->ToStart();
