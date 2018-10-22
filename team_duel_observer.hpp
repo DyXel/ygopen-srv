@@ -12,19 +12,23 @@ class ServerRoomClient;
 
 class TeamDuelObserver : public DuelObserver
 {
-	short team; // 0 or 1 (2 for spectators)
+	const short team; // 0 or 1 (2 for spectators)
 	bool responseFlag;
 	std::weak_ptr<Duel> duel;
 	std::map<int, std::shared_ptr<ServerRoomClient>> players;
 
-	bool IsMsgForThisTeam(void* buffer, size_t length);
-	bool StripKnowledge(void* buffer, size_t length, std::string& newMsg);
+	// Knowledge handling helper functions
+	const bool IsCardPublic(const uint8_t location, const uint32_t position) const;
+	const bool IsMsgForThisTeam(void* buffer, size_t length);
+	const bool StripMessageKnowledge(void* buffer, size_t length, std::string& newMsg);
+	const bool StripQueryKnowledge(void* buffer, size_t length, std::string& newMsg);
 
-	// These functions handle queries sending, the queries are _optional_
-	// information that can be retrieved from the core to be send to the
+	// These functions handle queries sending. Queries are optional
+	// information that can be retrieved from the core to be sent to the
 	// client to obtain more information about the board or invididual cards
-	void QueryMonsterZone(int playerPos, int flag = mZoneDefQueryFlag, bool useCache = true);
-	void QuerySpellZone(int playerPos, int flag = sZoneDefQueryFlag, bool useCache = true);
+	void QueryLocation(int location, int flag, bool useCache = true);
+	void QueryMonsterZones(int flag = mZoneDefQueryFlag, bool useCache = true);
+	void QuerySpellZones(int flag = sZoneDefQueryFlag, bool useCache = true);
 	void QueryHand(int playerPos, int flag = handDefQueryFlag, bool useCache = true);
 	void QueryGrave(int playerPos, int flag = graveDefQueryFlag, bool useCache = true);
 	void QueryExtra(int playerPos, int flag = extraDefQueryFlag, bool useCache = true);

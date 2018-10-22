@@ -2,6 +2,8 @@
 #include "server_room_client.hpp"
 
 #include "enums/core_message.hpp"
+#include "enums/location.hpp"
+#include "enums/position.hpp"
 
 #include <set>
 
@@ -45,14 +47,16 @@ static const std::set<CoreMessage> knowledgeMsgs =
 	CoreMessage::Draw
 };
 
+/*
+NOTE: Not needed on current implementation, switch case used instead
+
+
 // Messages that require performing queries before the actual message is sent
 static const std::set<CoreMessage> beforeMsgQueries =
 {
 	CoreMessage::SelectBattleCmd,
 	CoreMessage::SelectIdleCmd,
-	CoreMessage::ShuffleDeck,
 	CoreMessage::NewTurn,
-	CoreMessage::NewPhase,
 	CoreMessage::FlipSummoning
 };
 
@@ -68,15 +72,17 @@ static const std::set<CoreMessage> afterMsgQueries =
 	CoreMessage::NewPhase,
 	CoreMessage::Move,
 	CoreMessage::PosChange,
-	CoreMessage::Swap
+	CoreMessage::Swap,
 	CoreMessage::Summoned,
 	CoreMessage::SpSummoned,
 	CoreMessage::FlipSummoned,
 	CoreMessage::Chained,
+	CoreMessage::ChainSolved,
 	CoreMessage::ChainEnd,
 	CoreMessage::DamageStepStart,
 	CoreMessage::DamageStepEnd
 };
+*/
 
 TeamDuelObserver::TeamDuelObserver(short team) :
 	team(team),
@@ -104,7 +110,7 @@ const bool TeamDuelObserver::IsReponseFlagSet() const
 	return responseFlag;
 }
 
-bool TeamDuelObserver::IsMsgForThisTeam(void* buffer, size_t length)
+const bool TeamDuelObserver::IsMsgForThisTeam(void* buffer, size_t length)
 {
 	BufferManipulator bm(buffer, length);
 	const auto msgType = (CoreMessage)bm.Read<uint8_t>();
@@ -151,20 +157,27 @@ bool TeamDuelObserver::IsMsgForThisTeam(void* buffer, size_t length)
 			{
 				const auto forPlayer = bm.Read<uint8_t>();
 				bm.Forward(1 + 4);
-				if (bm.Read<uint8_t>() == 0x01 && forPlayer != team) // 0x01 == LOCATION_DECK
+				if (bm.Read<uint8_t>() == LocationMainDeck && forPlayer != team)
 					return false;
 			}
 			break;
-			default:
-				std::abort();
-			break;
+			default: break;
 		}
 	}
 
 	return true;
 }
 
-bool TeamDuelObserver::StripKnowledge(void* buffer, size_t length, std::string& newMsg)
+const bool TeamDuelObserver::IsCardPublic(const uint8_t location, const uint32_t position) const
+{
+	if(location & (LocationGraveyard + LocationOverlay) && !(location & (LocationMainDeck + LocationHand)))
+		return true;
+	else if(!(position & PositionFaceDown))
+		return true;
+	return false;
+}
+
+const bool TeamDuelObserver::StripMessageKnowledge(void* buffer, size_t length, std::string& newMsg)
 {
 	newMsg.reserve((size_t)length);
 	std::memcpy(&newMsg[0], buffer, length);
@@ -242,16 +255,6 @@ bool TeamDuelObserver::StripKnowledge(void* buffer, size_t length, std::string& 
 		break;
 		case CoreMessage::Move:
 		{
-			// TODO: use enums for positions and locations
-			auto IsCardPublic = [](const uint8_t location, const uint32_t position) -> const bool
-			{
-				if(location & (0x10 + 0x80) && !(location & (0x01 + 0x02)))
-					return true;
-				else if(!(position & 0x0a))
-					return true;
-				return false;
-			};
-
 			bm.Forward(4); // code
 			bm.Forward(10); // loc_info previous
 			const auto currentControler = bm.Read<uint8_t>();
@@ -282,7 +285,7 @@ bool TeamDuelObserver::StripKnowledge(void* buffer, size_t length, std::string& 
 				{
 					const auto code = bm.Read<uint32_t>();
 					bm.Backward(4);
-					if(code & 0x80000000) // if card is POS_FACEUP
+					if(code & 0x80000000) // if card is PositionFaceUp
 						bm.Forward(4);
 					else
 						bm.Write<uint32_t>(0);
@@ -290,59 +293,424 @@ bool TeamDuelObserver::StripKnowledge(void* buffer, size_t length, std::string& 
 			}
 		}
 		break;
-		default:
-			std::abort();
-		break;
+		default: break;
 	}
 	
 	return true;
 }
 
-/************************/
-void TeamDuelObserver::QueryMonsterZone(int playerPos, int flag, bool useCache)
+const bool TeamDuelObserver::StripQueryKnowledge(void* buffer, size_t length, std::string& newMsg)
 {
+	newMsg.reserve(length);
+	std::memcpy(&newMsg[0], buffer, length);
+	bool wasKnowledgeDeleted = false;
 	
+	BufferManipulator bm(&newMsg[0], length);
+	while(bm.CanAdvance())
+	{
+		// On the first int32, the full length is written
+		// only if card::get_infos() gets called successfully
+		// otherwise this will be 4, as in, only the length
+		// of the variable that stores the length was written
+		const auto queryLength = bm.Read<uint32_t>();
+
+		// If the card is null, then continue to the next card query
+		if(queryLength == 4)
+			continue;
+
+		// On the second int32 the flags used on this query are written
+		// plus
+		// *p++ from QUERY_CODE
+		bm.Forward(4 + 4);
+		
+		// The last byte is the position of the card, not the whole int32
+		// supposedly done for compatibility with other servers
+		bm.Forward(3);
+		const auto position = bm.Read<uint8_t>();
+		
+		// Go back to just in front of queryLength
+		bm.Backward(4 + 4 + 3 + 1);
+		
+		if(position & PositionFaceDown)
+		{
+			auto tmpBuffer = bm.GetCurrentBuffer();
+			
+			// since the queryLength variable is also included in the length we need to exclude it.
+			std::memset(tmpBuffer.first, 0, queryLength - 4);
+			wasKnowledgeDeleted = true;
+		}
+		
+		// Go to next query
+		bm.Forward(queryLength - 4);
+	}
+	
+	return wasKnowledgeDeleted;
 }
 
-void TeamDuelObserver::QuerySpellZone(int playerPos, int flag, bool useCache)
+/************************/
+void TeamDuelObserver::QueryLocation(int location, int flag, bool useCache)
 {
-	
+	auto duelPtr = duel.lock();
+	for(int i = 0; i <= 1; i++)
+	{
+		STOCMessage msg(STOC_GAME_MSG);
+		auto bm = msg.GetBM();
+
+		bm->Write((uint8_t)CoreMessage::UpdateData);
+		bm->Write<uint8_t>(i); // Player
+		bm->Write<uint8_t>(location);
+
+		auto buffer = duelPtr->QueryFieldCard(i, location, flag, useCache);
+
+		if(team == i)
+		{
+			bm->Write(buffer);
+		}
+		else
+		{
+			std::string newMsg;
+			StripQueryKnowledge(buffer.first, buffer.second, newMsg);
+			bm->Write(std::make_pair((void*)&newMsg[0], buffer.second));
+		}
+		
+		msg.Encode();
+		for(auto& player : players)
+			player.second->PushBackMsg(msg);
+	}
+}
+
+void TeamDuelObserver::QueryMonsterZones(int flag, bool useCache)
+{
+	if(!duel.expired())
+		QueryLocation(LocationMonsterZone, flag, useCache);
+}
+
+void TeamDuelObserver::QuerySpellZones(int flag, bool useCache)
+{
+	if(!duel.expired())
+		QueryLocation(LocationSpellZone, flag, useCache);
 }
 
 void TeamDuelObserver::QueryHand(int playerPos, int flag, bool useCache)
 {
+	if(duel.expired())
+		return;
+	auto duelPtr = duel.lock();
+
+	STOCMessage msg(STOC_GAME_MSG);
+	auto bm = msg.GetBM();
+
+	bm->Write((uint8_t)CoreMessage::UpdateData);
+	bm->Write<uint8_t>(playerPos); 
+	bm->Write<uint8_t>(LocationHand);
 	
+	auto buffer = duelPtr->QueryFieldCard(playerPos, LocationHand, flag | QueryIsPublic, useCache);
+	
+	if(team == playerPos)
+	{
+		bm->Write(buffer);
+	}
+	else
+	{
+		// This is similar to StripQueryKnowledge but not quite the same
+		std::string newMsg;
+		newMsg.reserve(buffer.second);
+		std::memcpy(&newMsg[0], buffer.first, buffer.second);
+		
+		BufferManipulator bm2(&newMsg[0], buffer.second);
+		while(bm2.CanAdvance())
+		{
+			// Consideration for the reader: please dont try to
+			// write code like this one anywhere else.
+			const auto queryLength = bm2.Read<uint32_t>();
+
+			auto tmpBuffer = bm2.GetCurrentBuffer();
+
+			const auto queryFlags = bm2.Read<uint32_t>();
+			bm2.Backward(4 + 4);
+
+			int isPublicPos = queryLength - 4;
+
+			if(queryFlags & QueryLScale)
+				isPublicPos -= 4;
+			if(queryFlags & QueryRSCale)
+				isPublicPos -= 4;
+			if(queryFlags & QueryLink)
+				isPublicPos -= 8; // both link rating and link markers
+			
+			bm2.Forward(isPublicPos);
+			
+			const auto isPublicQuery = bm2.Read<uint32_t>();
+			
+			if(!isPublicQuery)
+				std::memset(tmpBuffer.first, 0, queryLength - 4);
+			
+			bm2.Backward(isPublicPos + 4);
+			bm2.Forward(queryLength);
+		}
+		
+		bm->Write(std::make_pair((void*)&newMsg[0], buffer.second));
+	}
+
+	msg.Encode();
+	for(auto& player : players)
+		player.second->PushBackMsg(msg);
 }
 
 void TeamDuelObserver::QueryGrave(int playerPos, int flag, bool useCache)
 {
-	
+	if(duel.expired())
+		return;
+	auto duelPtr = duel.lock();
+	STOCMessage msg(STOC_GAME_MSG);
+	auto bm = msg.GetBM();
+
+	bm->Write((uint8_t)CoreMessage::UpdateData);
+	bm->Write<uint8_t>(playerPos); 
+	bm->Write<uint8_t>(LocationGraveyard);
+
+	auto buffer = duelPtr->QueryFieldCard(playerPos, LocationGraveyard, flag, useCache);
+
+	bm->Write(buffer);
+
+	msg.Encode();
+	for(auto& player : players)
+		player.second->PushBackMsg(msg);
 }
 
 void TeamDuelObserver::QueryExtra(int playerPos, int flag, bool useCache)
 {
-	
+	if(duel.expired())
+		return;
+	auto duelPtr = duel.lock();
+	STOCMessage msg(STOC_GAME_MSG);
+	auto bm = msg.GetBM();
+
+	bm->Write((uint8_t)CoreMessage::UpdateData);
+	bm->Write<uint8_t>(playerPos);
+	bm->Write<uint8_t>(LocationExtraDeck);
+
+	auto buffer = duelPtr->QueryFieldCard(playerPos, LocationExtraDeck, flag, useCache);
+
+	bm->Write(buffer);
+
+	msg.Encode();
+	for(auto& player : players)
+		player.second->PushBackMsg(msg);
 }
 
-void TeamDuelObserver::QuerySingle(int playerPos, int location, int sequence, int flag = singleDefQueryFlag)
+void TeamDuelObserver::QuerySingle(int playerPos, int location, int sequence, int flag)
 {
+	if(duel.expired())
+		return;
+	auto duelPtr = duel.lock();
+	STOCMessage msg(STOC_GAME_MSG);
+	auto bm = msg.GetBM();
+
+	bm->Write((uint8_t)CoreMessage::UpdateCard);
+	bm->Write<uint8_t>(playerPos);
+	bm->Write<uint8_t>(location);
+	bm->Write<uint8_t>(sequence);
 	
+	auto buffer = duelPtr->QueryCard(playerPos, location, sequence, flag);
+	
+	if(team != playerPos)
+	{
+		BufferManipulator bm2(buffer);
+		// queryLength = 4 bytes
+		// queryFlag = 4 bytes
+		// code = 4 bytes
+		// 3 padding bytes
+		bm2.Forward(4 + 4 + 4 + 3);
+		const auto position = bm2.Read<uint8_t>();
+		if(!IsCardPublic(location, position))
+			return;
+	}
+
+	bm->Write(buffer);
+
+	msg.Encode();
+	for(auto& player : players)
+		player.second->PushBackMsg(msg);
 }
 
-void TeamDuelObserver::QueryDeckPseudo(int playerPos, int flag = deckDefQueryFlag);
+void TeamDuelObserver::QueryDeckPseudo(int playerPos, int flag)
 {
-	
+	if(duel.expired())
+		return;
+	auto duelPtr = duel.lock();
+	STOCMessage msg(STOC_GAME_MSG);
+	auto bm = msg.GetBM();
+
+	bm->Write((uint8_t)CoreMessage::UpdateData);
+	bm->Write<uint8_t>(playerPos);
+	bm->Write<uint8_t>(LocationMainDeck);
+
+	// TODO: handle ignoreCache
+	//auto buffer = duelPtr->QueryFieldCard(playerPos, LocationMainDeck, flag, false, true);
+
+	/*
+	bm->Write(buffer);
+
+	msg.Encode();
+	for(auto& player : players)
+		player.second->PushBackMsg(msg);
+	*/
+	// TODO: this is only written to a replay
 }
 /************************/
 
 void TeamDuelObserver::HandleBeforeMsgQueries(void* buffer, size_t length)
 {
-	
+	BufferManipulator bm(buffer, length);
+	const auto msgType = (CoreMessage)bm.Read<uint8_t>();
+
+	switch(msgType)
+	{
+		case CoreMessage::SelectBattleCmd:
+		case CoreMessage::SelectIdleCmd:
+		case CoreMessage::NewTurn:
+		{
+			QueryMonsterZones();
+			QuerySpellZones();
+			QueryHand(0);
+			QueryHand(1);
+		}
+		break;
+		case CoreMessage::FlipSummoning:
+		{
+			bm.Forward(4); // probably card code
+			const auto controler = bm.Read<uint8_t>();
+			const auto location = bm.Read<uint8_t>();
+			const auto sequence = bm.Read<uint32_t>();
+			QuerySingle(controler, location, sequence);
+		}
+		break;
+		default:
+		break;
+	}
 }
 
 void TeamDuelObserver::HandleAfterMsgQueries(void* buffer, size_t length)
 {
+	BufferManipulator bm(buffer, length);
+	const auto msgType = (CoreMessage)bm.Read<uint8_t>();
 	
+	switch(msgType)
+	{
+		case CoreMessage::ShuffleDeck:
+		{
+			const auto player = bm.Read<uint8_t>();
+			QueryDeckPseudo(player);
+		}
+		break;
+		case CoreMessage::ShuffleHand:
+		{
+			const auto player = bm.Read<uint8_t>();
+			QueryHand(player, handDefQueryFlag, false);
+		}
+		break;
+		case CoreMessage::ShuffleExtra:
+		{
+			const auto player = bm.Read<uint8_t>();
+			QueryExtra(player);
+		}
+		break;
+		case CoreMessage::SwapGraveDeck:
+		{
+			const auto player = bm.Read<uint8_t>();
+			QueryGrave(player);
+		}
+		break;
+		case CoreMessage::ReverseDeck:
+		{
+			QueryDeckPseudo(0);
+			QueryDeckPseudo(1);
+		}
+		break;
+		case CoreMessage::ShuffleSetCard:
+		{
+			const auto location = bm.Read<uint8_t>();
+			if(location == LocationMonsterZone)
+				QueryMonsterZones(basicDefQueryFlag + QueryIsPublic, false);
+			else
+				QuerySpellZones(basicDefQueryFlag + QueryIsPublic, false);
+		}
+		break;
+		case CoreMessage::NewPhase:
+		case CoreMessage::Chained:
+		case CoreMessage::ChainSolved:
+		case CoreMessage::ChainEnd:
+		{
+			QueryMonsterZones();
+			QuerySpellZones();
+			QueryHand(0);
+			QueryHand(1);
+		}
+		break;
+		case CoreMessage::Move:
+		{
+			bm.Forward(4); // previousCode
+			const auto previousControler = bm.Read<uint8_t>();
+			const auto previousLocation = bm.Read<uint8_t>();
+			bm.Forward(4 + 4); // previousSequence + previousPosition
+			const auto currentControler = bm.Read<uint8_t>();
+			const auto currentLocation = bm.Read<uint8_t>();
+			const auto currentSequence = bm.Read<uint32_t>();
+			
+			if(currentLocation == 0)
+				return;
+			if(currentLocation == LocationOverlay)
+				return;
+			if(currentLocation == previousLocation && currentControler == previousControler)
+				return;
+
+			QuerySingle(currentControler, currentLocation, currentSequence);
+		}
+		break;
+		case CoreMessage::PosChange:
+		{
+			const auto currentControler = bm.Read<uint8_t>();
+			const auto currentLocation = bm.Read<uint8_t>();
+			const auto currentSequence = bm.Read<uint8_t>();
+			const auto previousPosition = bm.Read<uint8_t>();
+			const auto currentPosition = bm.Read<uint8_t>();
+			if((previousPosition & PositionFaceDown) &&
+			   (currentPosition & PositionFaceUp))
+				QuerySingle(currentControler, currentLocation, currentSequence);
+		}
+		break;
+		case CoreMessage::Swap:
+		{
+			bm.Forward(4); // previousCode
+			const auto previousControler = bm.Read<uint8_t>();
+			const auto previousLocation = bm.Read<uint8_t>();
+			const auto previousSequence = bm.Read<uint32_t>();
+			bm.Forward(4 + 4); // previousPosition + currentCode
+			const auto currentControler = bm.Read<uint8_t>();
+			const auto currentLocation = bm.Read<uint8_t>();
+			const auto currentSequence = bm.Read<uint32_t>();
+			QuerySingle(previousControler, previousLocation, previousSequence);
+			QuerySingle(currentControler, currentLocation, currentSequence);
+		}
+		break;
+		case CoreMessage::Summoned:
+		case CoreMessage::SpSummoned:
+		case CoreMessage::FlipSummoned:
+		{
+			QueryMonsterZones();
+			QuerySpellZones();
+		}
+		break;
+		case CoreMessage::DamageStepStart:
+		case CoreMessage::DamageStepEnd:
+		{
+			QueryMonsterZones();
+		}
+		break;
+		default:
+		break;
+	}
 }
 
 void TeamDuelObserver::OnNotify(void* buffer, size_t length)
@@ -355,7 +723,7 @@ void TeamDuelObserver::OnNotify(void* buffer, size_t length)
 	STOCMessage msg(STOC_GAME_MSG);
 
 	std::string newMsg;
-	if(StripKnowledge(buffer, length, newMsg))
+	if(StripMessageKnowledge(buffer, length, newMsg))
 		msg.GetBM()->Write(std::make_pair((void*)&newMsg[0], length));
 	else
 		msg.GetBM()->Write(std::make_pair(buffer, length));
