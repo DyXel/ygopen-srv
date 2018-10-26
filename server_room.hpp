@@ -16,6 +16,11 @@ class DatabaseManager;
 class CoreInterface;
 class Banlist;
 
+namespace YGOpen
+{
+namespace Legacy
+{
+
 typedef std::shared_ptr<ServerRoomClient> Client;
 
 class ServerRoom : public DuelObserver
@@ -27,7 +32,7 @@ class ServerRoom : public DuelObserver
 	std::shared_ptr<Duel> duel;
 
 	int state;
-	ygo::HostInfo duelInfo;
+	HostInfo duelInfo;
 	bool decksSorted; // Used to avoid multiple sorts through duels
 
 	bool IsTag() const;
@@ -94,3 +99,7 @@ public:
 	void SendTypeChange(Client client);
 };
 #endif // __SERVER_ROOM_HPP__
+
+} // namespace Legacy
+} // namespace YGOpen
+

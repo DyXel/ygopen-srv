@@ -1,4 +1,6 @@
 #include "team_duel_observer.hpp" 
+
+#include "network.hpp"
 #include "server_room_client.hpp"
 
 #include "enums/core_message.hpp"
@@ -6,6 +8,10 @@
 #include "enums/position.hpp"
 
 #include <set>
+namespace YGOpen
+{
+namespace Legacy
+{
 
 // Messages that are meant to set the response flag and be answered by the team
 static const std::set<CoreMessage> playerMsgs =
@@ -353,7 +359,7 @@ void TeamDuelObserver::QueryLocation(int location, int flag, bool useCache)
 	auto duelPtr = duel.lock();
 	for(int i = 0; i <= 1; i++)
 	{
-		STOCMessage msg(STOC_GAME_MSG);
+		STOCMessage msg(StoC::Msg::GameMsg);
 		auto bm = msg.GetBM();
 
 		bm->Write((uint8_t)CoreMessage::UpdateData);
@@ -397,7 +403,7 @@ void TeamDuelObserver::QueryHand(int playerPos, int flag, bool useCache)
 		return;
 	auto duelPtr = duel.lock();
 
-	STOCMessage msg(STOC_GAME_MSG);
+	STOCMessage msg(StoC::Msg::GameMsg);
 	auto bm = msg.GetBM();
 
 	bm->Write((uint8_t)CoreMessage::UpdateData);
@@ -462,7 +468,7 @@ void TeamDuelObserver::QueryGrave(int playerPos, int flag, bool useCache)
 	if(duel.expired())
 		return;
 	auto duelPtr = duel.lock();
-	STOCMessage msg(STOC_GAME_MSG);
+	STOCMessage msg(StoC::Msg::GameMsg);
 	auto bm = msg.GetBM();
 
 	bm->Write((uint8_t)CoreMessage::UpdateData);
@@ -483,7 +489,7 @@ void TeamDuelObserver::QueryExtra(int playerPos, int flag, bool useCache)
 	if(duel.expired())
 		return;
 	auto duelPtr = duel.lock();
-	STOCMessage msg(STOC_GAME_MSG);
+	STOCMessage msg(StoC::Msg::GameMsg);
 	auto bm = msg.GetBM();
 
 	bm->Write((uint8_t)CoreMessage::UpdateData);
@@ -504,7 +510,7 @@ void TeamDuelObserver::QuerySingle(int playerPos, int location, int sequence, in
 	if(duel.expired())
 		return;
 	auto duelPtr = duel.lock();
-	STOCMessage msg(STOC_GAME_MSG);
+	STOCMessage msg(StoC::Msg::GameMsg);
 	auto bm = msg.GetBM();
 
 	bm->Write((uint8_t)CoreMessage::UpdateCard);
@@ -539,7 +545,7 @@ void TeamDuelObserver::QueryDeckPseudo(int playerPos, int flag)
 	if(duel.expired())
 		return;
 	auto duelPtr = duel.lock();
-	STOCMessage msg(STOC_GAME_MSG);
+	STOCMessage msg(StoC::Msg::GameMsg);
 	auto bm = msg.GetBM();
 
 	bm->Write((uint8_t)CoreMessage::UpdateData);
@@ -720,7 +726,7 @@ void TeamDuelObserver::OnNotify(void* buffer, size_t length)
 	if(!IsMsgForThisTeam(buffer, length))
 		return;
 
-	STOCMessage msg(STOC_GAME_MSG);
+	STOCMessage msg(StoC::Msg::GameMsg);
 
 	std::string newMsg;
 	if(StripMessageKnowledge(buffer, length, newMsg))
@@ -736,3 +742,6 @@ void TeamDuelObserver::OnNotify(void* buffer, size_t length)
 
 	HandleAfterMsgQueries(buffer, length);
 }
+
+} // namespace Legacy
+} // namespace YGOpen

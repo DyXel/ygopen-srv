@@ -6,6 +6,11 @@
 
 #include "string_utils.hpp"
 
+namespace YGOpen
+{
+namespace Legacy
+{
+
 void ServerRoomClient::DoReadHeader()
 {
 	auto self(shared_from_this());
@@ -56,20 +61,22 @@ void ServerRoomClient::DoWrite()
 bool ServerRoomClient::ParseMsg()
 {
 	BufferManipulator bm(receivedMsg.GetDataPtr(), receivedMsg.GetMsgLength());
-	uint8_t msgType = receivedMsg.GetMsgType();
+	CtoS::Msg msgType = receivedMsg.GetMsgType();
 
 	switch(msgType)
 	{
-		case CTOS_PLAYER_INFO:
+		case CtoS::Msg::PlayerInfo:
 			OnPlayerInfo(&bm);
 		return true;
-		case CTOS_JOIN_GAME:
+		case CtoS::Msg::JoinGame:
 			OnJoinGame(&bm);
 		return true;
-		case CTOS_CREATE_GAME:
+		case CtoS::Msg::CreateGame:
 			//OnCreateGame();
 			auth = true;
 		return true;
+		default:
+		break;
 	}
 
 	if(auth == false)
@@ -80,41 +87,41 @@ bool ServerRoomClient::ParseMsg()
 
 	switch(msgType)
 	{
-		case CTOS_RESPONSE:
+		case CtoS::Msg::Response:
 			OnResponse(&bm);
 		break;
-		case CTOS_CHAT:
+		case CtoS::Msg::Chat:
 			OnChat(&bm);
 		break;
-		case CTOS_SURRENDER:
+		case CtoS::Msg::Surrender:
 			OnSurrender(&bm);
 			// TODO: reason of surrender might be needed
 		break;
-		case CTOS_UPDATE_DECK:
+		case CtoS::Msg::UpdateDeck:
 			OnUpdateDeck(&bm);
 		break;
-		case CTOS_HS_TODUELIST:
+		case CtoS::Msg::HsToDuelist:
 			OnMoveToDuelist();
 		break;
-		case CTOS_HS_TOOBSERVER:
+		case CtoS::Msg::HsToObserver:
 			OnMoveToSpectator();
 		break;
-		case CTOS_HS_READY:
+		case CtoS::Msg::HsReady:
 			OnReady();
 		break;
-		case CTOS_HS_NOTREADY:
+		case CtoS::Msg::HsNotReady:
 			OnNotReady();
 		break;
-		case CTOS_HS_KICK:
+		case CtoS::Msg::HsKick:
 			OnKickPlayer(&bm);
 		break;
-		case CTOS_HS_START:
+		case CtoS::Msg::HsStart:
 			OnStart();
 		break;
-		case CTOS_HAND_RESULT:
+		case CtoS::Msg::HandResult:
 			OnRPSHand(&bm);
 			break;
-		case CTOS_TP_RESULT:
+		case CtoS::Msg::TpResult:
 			OnTPSelect(&bm);
 			break;
 		default:
@@ -298,3 +305,7 @@ void ServerRoomClient::PushBackMsg(STOCMessage msg)
 	if(!writeInProgress)
 		DoWrite();
 }
+
+} // namespace Legacy
+} // namespace YGOpen
+

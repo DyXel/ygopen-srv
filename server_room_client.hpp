@@ -9,6 +9,11 @@
 #include "server_message.hpp"
 #include "deck.hpp"
 
+namespace YGOpen
+{
+namespace Legacy
+{
+
 class ServerRoom;
 
 class ServerRoomClient : public std::enable_shared_from_this<ServerRoomClient>
@@ -68,5 +73,9 @@ public:
 
 	void PushBackMsg(STOCMessage msg);
 };
+
+} // namespace Legacy
+} // namespace YGOpen
+
 
 #endif // __SERVER_ROOM_CLIENT_HPP__

@@ -8,6 +8,11 @@
 
 #include "enums/query.hpp"
 
+namespace YGOpen
+{
+namespace Legacy
+{
+
 class ServerRoomClient;
 
 class TeamDuelObserver : public DuelObserver
@@ -49,5 +54,8 @@ public:
 
 	const bool IsReponseFlagSet() const;
 };
+
+} // namespace Legacy
+} // namespace YGOpen
 
 #endif // __TEAM_DUEL_OBSERVER_HPP__

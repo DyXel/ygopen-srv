@@ -4,6 +4,11 @@
 #include <csignal>
 #include <algorithm>
 
+namespace YGOpen
+{
+namespace Legacy
+{
+
 std::shared_ptr<ServerRoom> ServerAcceptor::GetAvailableRoom()
 {
 	if(rooms.empty())
@@ -114,5 +119,5 @@ ServerAcceptor::~ServerAcceptor()
 	ci.UnloadLibrary();
 }
 
-
-
+} // namespace Legacy
+} // namespace YGOpen

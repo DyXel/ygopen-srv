@@ -13,6 +13,11 @@
 #include "enums/position.hpp"
 #include "enums/type.hpp"
 
+namespace YGOpen
+{
+namespace Legacy
+{
+
 bool ServerRoom::IsTag() const
 {
 	return duelInfo.mode == 0x02;
@@ -91,7 +96,7 @@ void ServerRoom::SwapPlayers()
 
 void ServerRoom::SendSpectatorNumber(Client except)
 {
-	STOCMessage msg(STOC_HS_WATCH_CHANGE);
+	STOCMessage msg(StoC::Msg::HsWatchChange);
 	msg.GetBM()->Write<uint16_t>(spectators.size());
 	if(except != nullptr)
 		SendToAllExcept(except, msg);
@@ -169,7 +174,7 @@ void ServerRoom::SendRPS()
 {
 	state = STATE_RPS;
 	
-	STOCMessage msg(STOC_SELECT_HAND);
+	STOCMessage msg(StoC::Msg::SelectHand);
 	SendTo(players[0], msg);
 	SendTo(players[GetSecondTeamCap()], msg);
 }
@@ -244,7 +249,7 @@ void ServerRoom::StartDuel(bool result)
 			duel->NewCard(code, player.first, player.first, LocationExtraDeck, 0, PositionFaceDownDefense);
 	}
 	
-	STOCMessage msg(STOC_GAME_MSG);
+	STOCMessage msg(StoC::Msg::GameMsg);
 	auto bm = msg.GetBM();
 	bm->Write<uint8_t>(0x4); // MSG_START
 	bm->Write<uint8_t>(0);
@@ -290,7 +295,7 @@ void ServerRoom::Close()
 		return;
 	state = STATE_END;
 
-	STOCMessage msg(STOC_DUEL_END);
+	STOCMessage msg(StoC::Msg::DuelEnd);
 	SendToAll(msg);
 
 	for(auto& client : clients)
@@ -370,7 +375,7 @@ void ServerRoom::Leave(Client client)
 		if(state == STATE_DUEL)
 			Surrender(client);
 
-		STOCMessage msg(STOC_HS_PLAYER_CHANGE);
+		STOCMessage msg(StoC::Msg::HsPlayerChange);
 		msg.GetBM()->Write<uint8_t>((client->pos << 0x04) + PLAYERCHANGE_LEAVE);
 		SendToAllExcept(client, msg);
 	}
@@ -400,7 +405,7 @@ void ServerRoom::OnNotify(void* buffer, size_t length)
 	
 	if(msgType == CoreMessage::Win)
 	{
-		STOCMessage msg(STOC_GAME_MSG);
+		STOCMessage msg(StoC::Msg::GameMsg);
 		msg.GetBM()->Write(std::make_pair(buffer, length));
 		SendToAll(msg);
 
@@ -451,7 +456,7 @@ void ServerRoom::Surrender(Client client)
 		return;
 	
 	// Send MSG_WIN
-	STOCMessage msg(STOC_GAME_MSG);
+	STOCMessage msg(StoC::Msg::GameMsg);
 	auto bm = msg.GetBM();
 	bm->Write<uint8_t>(0x5); // MSG_WIN
 	bm->Write<uint8_t>(1 - client->pos);
@@ -529,8 +534,8 @@ void ServerRoom::AddToLobby(Client client)
 		players.insert(std::make_pair(pos, client));
 		players_ready.insert(std::make_pair(pos, false));
 
-		STOCMessage msg(STOC_HS_PLAYER_ENTER);
-		ygo::STOC_HS_PlayerEnter s = {};
+		STOCMessage msg(StoC::Msg::HsPlayerEnter);
+		StoC::HS_PlayerEnter s = {};
 		std::u16string tmpStr = su::stou16(client->GetName());
 		for(int i = 0; i < (int)tmpStr.length(); ++i)
 			s.name[i] = tmpStr[i];
@@ -545,8 +550,8 @@ void ServerRoom::AddToLobby(Client client)
 	// Update client with lobby info
 	for(auto& c : players)
 	{
-		STOCMessage msg1(STOC_HS_PLAYER_ENTER);
-		ygo::STOC_HS_PlayerEnter s = {};
+		STOCMessage msg1(StoC::Msg::HsPlayerEnter);
+		StoC::HS_PlayerEnter s = {};
 		std::u16string tmpStr = su::stou16(c.second->GetName());
 		for(int i = 0; i < (int)tmpStr.length(); ++i)
 			s.name[i] = tmpStr[i];
@@ -555,7 +560,7 @@ void ServerRoom::AddToLobby(Client client)
 		SendTo(client, msg1);
 		
 		// Refresh ready status
-		STOCMessage msg2(STOC_HS_PLAYER_CHANGE);
+		STOCMessage msg2(StoC::Msg::HsPlayerChange);
 		uint8_t val = client->GetType(false) << 4;
 		val += (players_ready[c.first]) ? PLAYERCHANGE_READY : PLAYERCHANGE_NOTREADY;
 		msg2.GetBM()->Write(val);
@@ -564,7 +569,7 @@ void ServerRoom::AddToLobby(Client client)
 
 	if(spectators.size() > 0)
 	{
-		STOCMessage msg(STOC_HS_WATCH_CHANGE);
+		STOCMessage msg(StoC::Msg::HsWatchChange);
 		msg.GetBM()->Write<uint16_t>(spectators.size());
 		SendTo(client, msg);
 	}
@@ -578,9 +583,9 @@ void ServerRoom::AddToGame(Client client)
 
 void ServerRoom::Chat(Client client, std::string& chatMsg)
 {
-	STOCMessage msg(STOC_CHAT);
+	STOCMessage msg(StoC::Msg::Chat);
 
-	ygo::STOC_Chat s = {};
+	StoC::Chat s = {};
 	s.player = client->GetType(false);
 	std::u16string tmpStr = su::stou16(chatMsg);
 	for(int i = 0; i < (int)tmpStr.length(); ++i)
@@ -609,7 +614,7 @@ void ServerRoom::MoveToDuelist(Client client)
 		players.insert(std::make_pair(pos, client));
 		players_ready.insert(std::make_pair(pos, false));
 
-		STOCMessage msg(STOC_HS_PLAYER_CHANGE);
+		STOCMessage msg(StoC::Msg::HsPlayerChange);
 		uint8_t val = client->pos << 4;
 		val += pos;
 		msg.GetBM()->Write(val);
@@ -625,8 +630,8 @@ void ServerRoom::MoveToDuelist(Client client)
 		players_ready.insert(std::make_pair(pos, false));
 		spectators.erase(client);
 
-		STOCMessage msg(STOC_HS_PLAYER_ENTER);
-		ygo::STOC_HS_PlayerEnter s = {};
+		STOCMessage msg(StoC::Msg::HsPlayerEnter);
+		StoC::HS_PlayerEnter s = {};
 		std::u16string tmpStr = su::stou16(client->GetName());
 		for(int i = 0; i < (int)tmpStr.length(); ++i)
 			s.name[i] = tmpStr[i];
@@ -654,7 +659,7 @@ void ServerRoom::MoveToSpectator(Client client)
 	players_ready.erase(client->pos);
 	spectators.insert(client);
 
-	STOCMessage msg(STOC_HS_PLAYER_CHANGE);
+	STOCMessage msg(StoC::Msg::HsPlayerChange);
 	uint8_t val = client->GetType(false) << 4;
 	val += NETPLAYER_TYPE_OBSERVER;
 	msg.GetBM()->Write(val);
@@ -688,7 +693,7 @@ void ServerRoom::Ready(Client client, bool ready)
 		}
 		else
 		{
-			STOCMessage msg(STOC_ERROR_MSG);
+			STOCMessage msg(StoC::Msg::ErrorMsg);
 			auto bm = msg.GetBM();
 			bm->Write<uint8_t>(2);
 			bm->Write<uint16_t>(0); // Padding
@@ -701,7 +706,7 @@ void ServerRoom::Ready(Client client, bool ready)
 
 	players_ready[client->pos] = ready;
 
-	STOCMessage msg(STOC_HS_PLAYER_CHANGE);
+	STOCMessage msg(StoC::Msg::HsPlayerChange);
 	uint8_t val = client->GetType(false) << 4;
 	val += (ready) ? PLAYERCHANGE_READY : PLAYERCHANGE_NOTREADY;
 	msg.GetBM()->Write(val);
@@ -729,13 +734,13 @@ void ServerRoom::RPSHand(Client client, int answer)
 	if(players_rpshand.size() == 2)
 	{
 		// Send each other the hand result
-		STOCMessage msg1(STOC_HAND_RESULT);
+		STOCMessage msg1(StoC::Msg::HandResult);
 		auto bm = msg1.GetBM();
 		bm->Write<uint8_t>(players_rpshand[0]);
 		bm->Write<uint8_t>(players_rpshand[stc]);
 		SendToTeam(0, msg1);
 		
-		STOCMessage msg2(STOC_HAND_RESULT);
+		STOCMessage msg2(StoC::Msg::HandResult);
 		bm = msg2.GetBM();
 		bm->Write<uint8_t>(players_rpshand[stc]);
 		bm->Write<uint8_t>(players_rpshand[0]);
@@ -760,7 +765,7 @@ void ServerRoom::RPSHand(Client client, int answer)
 			startPlayer = players[0];
 		}
 
-		STOCMessage msg3(STOC_SELECT_TP);
+		STOCMessage msg3(StoC::Msg::SelectTp);
 		SendTo(startPlayer, msg3);
 	}
 }
@@ -806,7 +811,7 @@ void ServerRoom::Start(Client client)
 			return;
 	}
 
-	STOCMessage msg(STOC_DUEL_START);
+	STOCMessage msg(StoC::Msg::DuelStart);
 	SendToAll(msg);
 
 	SendRPS();
@@ -814,10 +819,10 @@ void ServerRoom::Start(Client client)
 
 void ServerRoom::SendJoinMsg(Client client)
 {
-	ygo::STOC_JoinGame s = {};
+	StoC::JoinGame s = {};
 	s.info = duelInfo;
 
-	STOCMessage msg(STOC_JOIN_GAME);
+	STOCMessage msg(StoC::Msg::JoinGame);
 	msg.GetBM()->Write(s);
 
 	SendTo(client, msg);
@@ -825,7 +830,10 @@ void ServerRoom::SendJoinMsg(Client client)
 
 void ServerRoom::SendTypeChange(Client client)
 {
-	STOCMessage msg(STOC_TYPE_CHANGE);
+	STOCMessage msg(StoC::Msg::TypeChange);
 	msg.GetBM()->Write<uint8_t>(client->GetType(true));
 	SendTo(client, msg);
 }
+
+} // namespace Legacy
+} // namespace YGOpen

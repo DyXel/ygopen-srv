@@ -12,6 +12,11 @@
 
 #include "duel.hpp"
 
+namespace YGOpen
+{
+namespace Legacy
+{
+
 class ServerAcceptor
 {
 	asio::signal_set signals;
@@ -32,5 +37,8 @@ public:
 	ServerAcceptor(asio::io_service& ioService, asio::ip::tcp::endpoint& endpoint);
 	~ServerAcceptor();
 };
+
+} // namespace Legacy
+} // namespace YGOpen
 
 #endif // __SERVER_ACCEPTOR_HPP__

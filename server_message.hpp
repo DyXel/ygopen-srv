@@ -1,14 +1,20 @@
 #ifndef __SERVER_MESSAGE_HPP__
 #define __SERVER_MESSAGE_HPP__
 #include <iostream>
-#include "network.h"
 #include "util/buffer_manipulator.hpp"
+
+#include "network.hpp"
+
+namespace YGOpen
+{
+namespace Legacy
+{
 
 class STOCMessage
 {
 public:
 	enum { HEADER_LENGTH = 3, MAX_MESSAGE_LENGTH = 1024 };
-	STOCMessage(int msgType) :
+	STOCMessage(StoC::Msg msgType) :
 		type(msgType),
 		bm(tmpData, MAX_MESSAGE_LENGTH)
 	{}
@@ -35,13 +41,13 @@ public:
 
 		BufferManipulator tmpBm(data, length);
 		tmpBm.Write<uint16_t>(msgLength + 1);
-		tmpBm.Write<uint8_t>(type);
+		tmpBm.Write<uint8_t>((uint8_t)type);
 
 		tmpBm.Write(bm);
 	}
 private:
 	uint16_t length;
-	uint8_t type;
+	StoC::Msg type;
 	char data[MAX_MESSAGE_LENGTH];
 	char tmpData[MAX_MESSAGE_LENGTH]; // Optimize this into a single value
 	BufferManipulator bm;
@@ -62,7 +68,7 @@ public:
 		return (size_t)length;
 	}
 
-	uint8_t GetMsgType() const
+	CtoS::Msg GetMsgType() const
 	{
 		return type;
 	}
@@ -76,19 +82,18 @@ public:
 		length = bm.Read<uint16_t>();
 		length--; // Not sure why the client adds 1 to the length
 
-		type = bm.Read<uint8_t>();
-		if(type == 0)
-		{
-			std::cout << "Invalid Message Type" << (int)type << std::endl;
-			return false;
-		}
+		type = (CtoS::Msg)bm.Read<uint8_t>();
 
 		std::cout << "Msg Length: " << (int)length << ". Type: " << (int)type << std::endl;
 		return true;
 	}
 private:
-	uint8_t type;
+	CtoS::Msg type;
 	uint16_t length;
 	char data[MAX_MESSAGE_LENGTH];
 };
+
+} // namespace Legacy
+} // namespace YGOpen
+
 #endif // __SERVER_MESSAGE_HPP__
