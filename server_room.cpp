@@ -224,7 +224,8 @@ void ServerRoom::StartDuel(bool result)
 	//for(auto& obs : spectators)
 	//	duel->AddObserver(obs.get());
 
-	duel->SetPlayersInfo(duelInfo.start_lp, duelInfo.start_hand, duelInfo.draw_count);
+	duel->SetPlayerInfo(0, duelInfo.start_lp, duelInfo.start_hand, duelInfo.draw_count);
+	duel->SetPlayerInfo(1, duelInfo.start_lp, duelInfo.start_hand, duelInfo.draw_count);
 	
 	// add cards..
 	// TODO: check if tag and relay duels require special treatment
