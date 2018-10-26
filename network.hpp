@@ -1,5 +1,5 @@
-#ifndef NETWORK_H
-#define NETWORK_H
+#ifndef __NETWORK_HPP__
+#define __NETWORK_HPP__
 #include <cstdint>
 
 namespace YGOpen
@@ -97,7 +97,7 @@ struct HS_WatchChange {
 	uint16_t watch_count;
 };
 
-}
+} // namespace StoC
 
 namespace CtoS
 {
@@ -123,10 +123,9 @@ enum class Msg : uint8_t
 	HsStart = 0x25
 };
 
-}
-}
-}
-
+} // namespace CtoS
+} // namespace Legacy
+} // namespace YGOpen
 
 // Too tedious to change these to enums
 // NOTE: Dont use outside of Legacy server
@@ -215,4 +214,4 @@ struct CTOS_Kick {
 #define MODE_RELAY		0x3
 */
 
-#endif //NETWORK_H
+#endif // __NETWORK_HPP__

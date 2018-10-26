@@ -12,12 +12,13 @@
 #include "duel_observer.hpp"
 #include "team_duel_observer.hpp"
 
+namespace YGOpen
+{
+
 class DatabaseManager;
 class CoreInterface;
 class Banlist;
 
-namespace YGOpen
-{
 namespace Legacy
 {
 
