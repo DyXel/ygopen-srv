@@ -94,6 +94,7 @@ ServerAcceptor::ServerAcceptor(asio::io_service& ioService, asio::ip::tcp::endpo
 	if(!ci.LoadLibrary())
 	{
 		acceptor.close();
+		ioService.stop();
 		return;
 	}
 
@@ -108,6 +109,7 @@ ServerAcceptor::ServerAcceptor(asio::io_service& ioService, asio::ip::tcp::endpo
 	if(!bl.FromJSON(s))
 	{
 		acceptor.close();
+		ioService.stop();
 		return;
 	}
 
