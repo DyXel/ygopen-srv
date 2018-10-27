@@ -84,7 +84,6 @@ public:
 
 		type = (CtoS::Msg)bm.Read<uint8_t>();
 
-		std::cout << "Msg Length: " << (int)length << ". Type: " << (int)type << std::endl;
 		return true;
 	}
 private:

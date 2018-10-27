@@ -343,9 +343,7 @@ ServerRoom::ServerRoom(DatabaseManager& dbmanager, CoreInterface& corei, Banlist
 }
 
 ServerRoom::~ServerRoom()
-{
-	std::cout << "Server Room Destructor called" << std::endl;
-}
+{}
 
 void ServerRoom::Join(Client client)
 {
@@ -496,21 +494,6 @@ void ServerRoom::UpdateDeck(Client client, std::vector<unsigned int>& mainExtra,
 	client->deck.main = main;
 	client->deck.extra = extra;
 	client->deck.side = side;
-
-	std::cout << "Main Deck: ";
-	for(auto &v : main)
-		std::cout << v << ' ';
-	std::cout << std::endl;
-
-	std::cout << "\nExtra Deck: ";
-	for(auto &v : extra)
-		std::cout << v << ' ';
-	std::cout << std::endl;
-
-	std::cout << "\nSide Deck: ";
-	for(auto &v : side)
-		std::cout << v << ' ';
-	std::cout << std::endl;
 }
 
 void ServerRoom::AddToLobby(Client client)

@@ -136,7 +136,6 @@ bool ServerRoomClient::ParseMsg()
 void ServerRoomClient::OnResponse(BufferManipulator* bm)
 {
 	const auto b = bm->GetCurrentBuffer();
-	std::cout << pos << ": Setting response..." << std::endl;
 	room->Response(shared_from_this(), b.first, b.second);
 }
 
@@ -247,9 +246,7 @@ ServerRoomClient::ServerRoomClient(asio::ip::tcp::socket tmpSocket, std::shared_
 }
 
 ServerRoomClient::~ServerRoomClient()
-{
-	std::cout << "SRC: Calling destructor" << std::endl;
-}
+{}
 
 const std::string& ServerRoomClient::WhoAmI() const
 {
