@@ -676,6 +676,7 @@ void TeamDuelObserver::HandleAfterMsgQueries(void* buffer, size_t length)
 		break;
 		case CoreMessage::PosChange:
 		{
+			bm.Forward(4); // code
 			const auto currentControler = bm.Read<uint8_t>();
 			const auto currentLocation = bm.Read<uint8_t>();
 			const auto currentSequence = bm.Read<uint8_t>();
