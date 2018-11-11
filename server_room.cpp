@@ -274,6 +274,10 @@ void ServerRoom::StartDuel(bool result)
 	bm->Forward(16);
 	SendToSpectators(msg);
 
+	firstTeamObserver.Start();
+	secondTeamObserver.Start();
+	spectatorTeamObserver.Start();
+
 	duel->Start(duelInfo.duel_flag);
 
 	duel->Process();

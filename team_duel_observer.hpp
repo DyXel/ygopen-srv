@@ -49,6 +49,9 @@ public:
 
 	void AddPlayer(int pos, std::shared_ptr<ServerRoomClient> player);
 	void SetDuel(std::weak_ptr<Duel> weakDuel);
+	
+	// Used to refresh extra deck atm but could be used for other things
+	void Start();
 
 	void Deinitialize();
 

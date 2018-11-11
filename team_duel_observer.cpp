@@ -105,6 +105,12 @@ void TeamDuelObserver::SetDuel(std::weak_ptr<Duel> weakDuel)
 	duel = weakDuel;
 }
 
+void TeamDuelObserver::Start()
+{
+	if(team < 2)
+		QueryExtra(team);
+}
+
 void TeamDuelObserver::Deinitialize()
 {
 	players.clear();
