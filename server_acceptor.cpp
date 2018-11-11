@@ -4,10 +4,51 @@
 #include <csignal>
 #include <algorithm>
 
+#include <nlohmann/json.hpp>
+
 namespace YGOpen
 {
 namespace Legacy
 {
+
+const bool ServerAcceptor::LoadDatabases()
+{
+	try
+	{
+		std::ifstream f("config/databases.json");
+		nlohmann::json j;
+		f >> j;
+		std::vector<std::string> v;
+
+		v = j.at("databases").get<std::vector<std::string>>();
+		for(std::string& s : v)
+			dbm.LoadDatabase(s.c_str());
+	}
+	catch(std::exception& e)
+	{
+		// TODO: print exception
+		return false;
+	}
+	
+	return true;
+}
+
+const bool ServerAcceptor::LoadBanlist()
+{
+	try
+	{
+		std::ifstream f("2018.5 TCG.json");
+		nlohmann::json j;
+		f >> j;
+		
+		return bl.FromJSON(j);
+	}
+	catch(std::exception& e)
+	{
+		// TODO: print exception
+		return false;
+	}
+}
 
 std::shared_ptr<ServerRoom> ServerAcceptor::GetAvailableRoom()
 {
@@ -89,7 +130,13 @@ ServerAcceptor::ServerAcceptor(asio::io_service& ioService, asio::ip::tcp::endpo
 
 	CoreAuxiliary::SetCore(&ci);
 	CoreAuxiliary::SetDatabaseManager(&dbm);
-	dbm.LoadDatabase("cards.cdb");
+	
+	if(!LoadDatabases())
+	{
+		acceptor.close();
+		ioService.stop();
+		return;
+	}
 
 	if(!ci.LoadLibrary())
 	{
@@ -101,17 +148,6 @@ ServerAcceptor::ServerAcceptor(asio::io_service& ioService, asio::ip::tcp::endpo
 	//ci.set_script_reader(script_reader);
 	ci.set_card_reader(&CoreAuxiliary::CoreCardReader);
 	ci.set_message_handler(&CoreAuxiliary::CoreMessageHandler);
-
-	std::ifstream f("2018.5 TCG.json");
-	std::stringstream buffer;
-	buffer << f.rdbuf();
-	std::string s = buffer.str();
-	if(!bl.FromJSON(s))
-	{
-		acceptor.close();
-		ioService.stop();
-		return;
-	}
 
 	DoAccept();
 }

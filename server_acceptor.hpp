@@ -26,6 +26,9 @@ class ServerAcceptor
 	DatabaseManager dbm;
 	CoreInterface ci;
 	Banlist bl;
+	
+	const bool LoadDatabases();
+	const bool LoadBanlist();
 
 	std::vector<std::weak_ptr<ServerRoom>> rooms;
 
