@@ -549,7 +549,7 @@ void ServerRoom::AddToLobby(Client client)
 		
 		// Refresh ready status
 		STOCMessage msg2(StoC::Msg::HsPlayerChange);
-		uint8_t val = client->GetType(false) << 4;
+		uint8_t val = c.second->GetType(false) << 4;
 		val += (players_ready[c.first]) ? PLAYERCHANGE_READY : PLAYERCHANGE_NOTREADY;
 		msg2.GetBM()->Write(val);
 		SendTo(client, msg2);

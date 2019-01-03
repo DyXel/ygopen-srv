@@ -27,6 +27,7 @@ const bool ServerAcceptor::LoadDatabases()
 	catch(std::exception& e)
 	{
 		// TODO: print exception
+		std::cout << "Exception ocurred: " << e.what() << std::endl;
 		return false;
 	}
 	
@@ -46,6 +47,7 @@ const bool ServerAcceptor::LoadBanlist()
 	catch(std::exception& e)
 	{
 		// TODO: print exception
+		std::cout << "Exception ocurred: " << e.what() << std::endl;
 		return false;
 	}
 }
@@ -138,7 +140,7 @@ ServerAcceptor::ServerAcceptor(asio::io_service& ioService, asio::ip::tcp::endpo
 		return;
 	}
 
-	if(!ci.LoadLibrary())
+	if(!ci.LoadCore())
 	{
 		acceptor.close();
 		ioService.stop();
@@ -154,8 +156,9 @@ ServerAcceptor::ServerAcceptor(asio::io_service& ioService, asio::ip::tcp::endpo
 
 ServerAcceptor::~ServerAcceptor()
 {
-	ci.UnloadLibrary();
+	ci.UnloadCore();
 }
 
 } // namespace Legacy
 } // namespace YGOpen
+
