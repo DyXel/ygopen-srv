@@ -2,40 +2,44 @@ local project_name = "ygopen-srv"
 local ygopen_dir   = "../ygopen"
 local json_dir     = "../json-develop/include"
 
-solution(project_name)
-	location(".")
+workspace(project_name)
+	location("build")
 	language("C++")
 	objdir("obj")
 
 	configurations({"Debug", "Release"})
+	startproject(project_name)
 
-	configuration("Debug")
-		flags("Symbols")
+	filter("action:vs*")
+		characterset("ASCII")
+
+	filter("configurations:Debug")
+		symbols("On")
 		defines("_DEBUG")
 		targetdir("bin/debug")
 
-	configuration("Release")
-		flags("OptimizeSpeed")
+	filter("configurations:Release")
+		optimize("Speed")
 		defines("_RELEASE")
 		targetdir("bin/release")
 
-	configuration("windows")
-		defines({ "WIN32", "_WIN32", "NOMINMAX" })
+	filter("system:windows")
+		defines { "WIN32", "_WIN32", "NOMINMAX" }
 
 	include(ygopen_dir)
 
 project(project_name)
 	kind("ConsoleApp")
-	flags("ExtraWarnings")
+	warnings("Extra")
 	defines("ASIO_STANDALONE")
 	files({"*.hpp", "*.cpp"})
-	includedirs (ygopen_dir)
+	includedirs(ygopen_dir)
 
 	links("ygopen")
-
-	configuration("windows or macosx")
+	
+	filter("system:windows or system:macosx")
 		includedirs(json_dir)
 
-	configuration("not windows")
+	filter("system:not windows")
 		buildoptions({"-pedantic", "--std=c++11"})
 		links({"dl", "pthread", "sqlite3"})
