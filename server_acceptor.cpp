@@ -60,19 +60,10 @@ std::shared_ptr<ServerRoom> ServerAcceptor::GetAvailableRoom()
 	}
 
 	// prune expired rooms
+	rooms.erase(std::remove_if(rooms.begin(), rooms.end(), [](std::weak_ptr<ServerRoom>& room) -> bool
 	{
-		auto it = rooms.begin();
-		while(it != rooms.end())
-		{
-			if(it->expired())
-			{
-				it = rooms.erase(it);
-				continue;
-			}
-			
-			++it;
-		}
-	}
+		return room.expired();
+	}), rooms.end());
 
 	auto search = std::find_if(rooms.begin(), rooms.end(), [](std::weak_ptr<ServerRoom> room) -> bool
 	{
