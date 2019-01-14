@@ -11,6 +11,7 @@
 
 #include "duel_observer.hpp"
 #include "team_duel_observer.hpp"
+#include "gmsg_observer.hpp"
 
 namespace YGOpen
 {
@@ -53,6 +54,8 @@ class ServerRoom : public DuelObserver
 	TeamDuelObserver firstTeamObserver;
 	TeamDuelObserver secondTeamObserver;
 	TeamDuelObserver spectatorTeamObserver;
+
+	GMsgObserver gmsgObserver;
 
 	void SendSpectatorNumber(Client except = nullptr);
 	void SendTo(Client client, STOCMessage msg);
