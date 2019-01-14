@@ -26,7 +26,6 @@ const bool ServerAcceptor::LoadDatabases()
 	}
 	catch(std::exception& e)
 	{
-		// TODO: print exception
 		std::cout << "Exception ocurred: " << e.what() << std::endl;
 		return false;
 	}
@@ -38,7 +37,7 @@ const bool ServerAcceptor::LoadBanlist()
 {
 	try
 	{
-		std::ifstream f("2018.5 TCG.json");
+		std::ifstream f("config/banlists/2018.9 TCG.json");
 		nlohmann::json j;
 		f >> j;
 		
@@ -46,7 +45,6 @@ const bool ServerAcceptor::LoadBanlist()
 	}
 	catch(std::exception& e)
 	{
-		// TODO: print exception
 		std::cout << "Exception ocurred: " << e.what() << std::endl;
 		return false;
 	}
