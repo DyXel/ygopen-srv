@@ -191,6 +191,8 @@ void ServerRoom::StartDuel(bool result)
 	spectatorTeamObserver.Deinitialize();
 
 	duel = std::make_shared<Duel>(ci, rnd());
+	duel->PreloadScript("constant.lua");
+	duel->PreloadScript("utility.lua");
 	std::weak_ptr<Duel> weakDuel = duel;
 	firstTeamObserver.SetDuel(weakDuel);
 	secondTeamObserver.SetDuel(weakDuel);
