@@ -1,20 +1,20 @@
 #include "gmsg_observer.hpp"
-#include "../ocgcore-proto/io_gmsg_stream.hpp"
+#include "../ocgcore-proto/msg_codec.hpp"
 
 namespace YGOpen
 {
 
-struct GMsgObserver::impl
+struct MsgCodecObserver::impl
 {
-	IGMsgEncoder encoder;
+	MsgEncoder encoder;
 };
 
-GMsgObserver::GMsgObserver() : pimpl(new impl())
+MsgCodecObserver::MsgCodecObserver() : pimpl(new impl())
 {}
 
-GMsgObserver::~GMsgObserver() = default;
+MsgCodecObserver::~MsgCodecObserver() = default;
 
-void GMsgObserver::OnNotify(void* buffer, size_t length)
+void MsgCodecObserver::OnNotify(void* buffer, size_t length)
 {
 	Core::GMsg gmsg = pimpl->encoder.Encode(buffer, length);
 }

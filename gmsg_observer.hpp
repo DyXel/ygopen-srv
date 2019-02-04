@@ -6,14 +6,14 @@
 namespace YGOpen
 {
 
-class GMsgObserver : public DuelObserver
+class MsgCodecObserver : public DuelObserver
 {
 	struct impl;
 	std::unique_ptr<impl> pimpl;
 
 public:
-	GMsgObserver();
-	~GMsgObserver();
+	MsgCodecObserver();
+	~MsgCodecObserver();
 	virtual void OnNotify(void* buffer, size_t length);
 };
 
