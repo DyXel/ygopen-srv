@@ -11,7 +11,7 @@
 
 #include "duel_observer.hpp"
 #include "team_duel_observer.hpp"
-#include "gmsg_observer.hpp"
+#include "msg_observer.hpp"
 
 namespace YGOpen
 {
