@@ -65,7 +65,7 @@ std::shared_ptr<ServerRoom> ServerAcceptor::GetAvailableRoom()
 		return room.expired();
 	}), rooms.end());
 
-	auto search = std::find_if(rooms.begin(), rooms.end(), [](std::weak_ptr<ServerRoom> room) -> bool
+	auto search = std::find_if(rooms.begin(), rooms.end(), [](std::weak_ptr<ServerRoom>& room) -> bool
 	{
 		auto tmpPtr = room.lock();
 		return tmpPtr->GetPlayersNumber() < tmpPtr->GetMaxPlayers();
