@@ -55,7 +55,7 @@ class ServerRoom : public DuelObserver
 	TeamDuelObserver secondTeamObserver;
 	TeamDuelObserver spectatorTeamObserver;
 
-	MsgCodecObserver gmsgObserver;
+	MsgCodecObserver msgObserver;
 
 	void SendSpectatorNumber(Client except = nullptr);
 	void SendTo(Client client, STOCMessage msg);

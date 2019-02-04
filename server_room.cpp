@@ -221,7 +221,7 @@ void ServerRoom::StartDuel(bool result)
 	duel->AddObserver(&secondTeamObserver);
 	duel->AddObserver(&spectatorTeamObserver);
 
-	duel->AddObserver(&gmsgObserver);
+	duel->AddObserver(&msgObserver);
 
 	//for(auto& obs : spectators)
 	//	duel->AddObserver(obs.get());
