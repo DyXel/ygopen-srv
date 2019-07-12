@@ -18,7 +18,10 @@ struct HostInfo {
 	uint8_t start_hand;
 	uint8_t draw_count;
 	uint16_t time_limit;
-	uint8_t check;
+	uint64_t handshake;
+	uint32_t team1;
+	uint32_t team2;
+	uint32_t best_of;
 	uint32_t duel_flag;
 	int32_t forbiddentypes;
 	uint16_t extra_rules;
@@ -129,6 +132,8 @@ enum class Msg : uint8_t
 
 // Too tedious to change these to enums
 // NOTE: Dont use outside of Legacy server
+#define SERVER_HANDSHAKE 4903489263569811227
+
 #define PLAYERCHANGE_OBSERVE	0x8
 #define PLAYERCHANGE_READY		0x9
 #define PLAYERCHANGE_NOTREADY	0xa
