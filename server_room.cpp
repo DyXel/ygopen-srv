@@ -654,7 +654,7 @@ void ServerRoom::MoveToSpectator(Client client)
 
 	STOCMessage msg(StoC::Msg::HsPlayerChange);
 	uint8_t val = client->GetType(false) << 4;
-	val += NETPLAYER_TYPE_OBSERVER;
+	val += PLAYERCHANGE_OBSERVE;
 	msg.GetBM()->Write(val);
 	SendToAll(msg);
 
