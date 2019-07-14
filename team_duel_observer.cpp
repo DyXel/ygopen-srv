@@ -28,6 +28,7 @@ static const std::set<CoreMessage> playerMsgs =
 	CoreMessage::SelectPlace,
 	CoreMessage::SelectPosition,
 	CoreMessage::SelectDisfield,
+	CoreMessage::SelectSum,
 	CoreMessage::SelectCounter,
 	CoreMessage::SortCard,
 	CoreMessage::SortChain,
@@ -36,8 +37,7 @@ static const std::set<CoreMessage> playerMsgs =
 	CoreMessage::AnnounceRace,
 	CoreMessage::AnnounceAttrib,
 	CoreMessage::AnnounceCard,
-	CoreMessage::AnnounceNumber,
-	CoreMessage::AnnounceCardFilter
+	CoreMessage::AnnounceNumber
 };
 
 // Messages that require removing knowledge in case they are not meant for the team
@@ -145,15 +145,6 @@ const bool TeamDuelObserver::IsMsgForThisTeam(void* buffer, size_t length)
 		// Special cases here
 		switch(msgType)
 		{
-			case CoreMessage::SelectSum:
-			{
-				bm.Forward(1);
-				if(bm.Read<uint8_t>() == team)
-					return (responseFlag = true);
-				else
-					return false;
-			}
-			break;
 			case CoreMessage::Hint:
 			{
 				const auto type = bm.Read<uint8_t>();
@@ -168,7 +159,7 @@ const bool TeamDuelObserver::IsMsgForThisTeam(void* buffer, size_t length)
 			case CoreMessage::ConfirmCards:
 			{
 				const auto forPlayer = bm.Read<uint8_t>();
-				bm.Forward(1 + 4);
+				bm.Forward(4 + 4);
 				if (bm.Read<uint8_t>() == LocationMainDeck && forPlayer != team)
 					return false;
 			}
@@ -222,14 +213,14 @@ const bool TeamDuelObserver::StripMessageKnowledge(void* buffer, size_t length, 
 		case CoreMessage::SelectCard:
 		{
 			const auto forPlayer = bm.Read<uint8_t>();
-			bm.Forward(3);
+			bm.Forward(9);
 			DeleteNonPublicKnowledge(forPlayer);
 		}
 		break;
 		case CoreMessage::SelectTribute:
 		{
 			const auto forPlayer = bm.Read<uint8_t>();
-			bm.Forward(3);
+			bm.Forward(9);
 			const auto count = bm.Read<uint32_t>();
 			for(uint32_t i = 0; i < count; i++)
 			{
@@ -248,7 +239,7 @@ const bool TeamDuelObserver::StripMessageKnowledge(void* buffer, size_t length, 
 		case CoreMessage::SelectUnselect:
 		{
 			const auto forPlayer = bm.Read<uint8_t>();
-			bm.Forward(4);
+			bm.Forward(10);
 			DeleteNonPublicKnowledge(forPlayer);
 			DeleteNonPublicKnowledge(forPlayer);
 		}
@@ -259,7 +250,7 @@ const bool TeamDuelObserver::StripMessageKnowledge(void* buffer, size_t length, 
 			const auto forPlayer = bm.Read<uint8_t>();
 			if(forPlayer != team)
 			{
-				const auto count = bm.Read<uint8_t>();
+				const auto count = bm.Read<uint32_t>();
 				for(uint32_t i = 0; i < count; i++)
 					bm.Write<uint32_t>(0);
 			}
@@ -273,7 +264,7 @@ const bool TeamDuelObserver::StripMessageKnowledge(void* buffer, size_t length, 
 			const auto currentLocation = bm.Read<uint8_t>();
 			bm.Forward(4); // loc_info.sequence
 			const auto currentPosition = bm.Read<uint32_t>();
-			bm.Forward(4); // ?
+			bm.Forward(4); // reason
 
 			if(currentControler != team && !IsCardPublic(currentLocation, currentPosition))
 			{
@@ -292,7 +283,7 @@ const bool TeamDuelObserver::StripMessageKnowledge(void* buffer, size_t length, 
 			const auto forPlayer = bm.Read<uint8_t>();
 			if(forPlayer != team)
 			{
-				const auto count = bm.Read<uint8_t>();
+				const auto count = bm.Read<uint32_t>();
 				for(uint8_t i = 0; i < count; i++)
 				{
 					const auto code = bm.Read<uint32_t>();

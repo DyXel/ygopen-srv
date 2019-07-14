@@ -246,10 +246,10 @@ void ServerRoom::StartDuel(bool result)
 	for(auto& player : players)
 	{
 		for(auto& code : player.second->deck.main)
-			duel->NewCard(code, player.first, player.first, LocationMainDeck, 0, PositionFaceDownDefense);
+			duel->NewCard(code, player.first, player.first, LocationMainDeck, 0, PositionFaceDownDefense, 0);
 		
 		for(auto& code : player.second->deck.extra)
-			duel->NewCard(code, player.first, player.first, LocationExtraDeck, 0, PositionFaceDownDefense);
+			duel->NewCard(code, player.first, player.first, LocationExtraDeck, 0, PositionFaceDownDefense, 0);
 	}
 	
 	STOCMessage msg(StoC::Msg::GameMsg);
@@ -342,7 +342,10 @@ ServerRoom::ServerRoom(DatabaseManager& dbmanager, CoreInterface& corei, Banlist
 	duelInfo.start_hand = 5;
 	duelInfo.draw_count = 1;
 	duelInfo.time_limit = 240;
-	duelInfo.check = 2; // use lua64
+	duelInfo.handshake = SERVER_HANDSHAKE; // edopro comparibility
+	duelInfo.team1 = 1;
+	duelInfo.team2 = 1;
+	duelInfo.best_of = 1;
 	duelInfo.duel_flag = 0x2800;
 	duelInfo.forbiddentypes = 0;
 	duelInfo.extra_rules = 0;
@@ -651,7 +654,7 @@ void ServerRoom::MoveToSpectator(Client client)
 
 	STOCMessage msg(StoC::Msg::HsPlayerChange);
 	uint8_t val = client->GetType(false) << 4;
-	val += NETPLAYER_TYPE_OBSERVER;
+	val += PLAYERCHANGE_OBSERVE;
 	msg.GetBM()->Write(val);
 	SendToAll(msg);
 
