@@ -56,7 +56,7 @@ std::shared_ptr<ServerRoom> ServerAcceptor::GetAvailableRoom()
 	{
 		auto room = std::make_shared<ServerRoom>(dbm, ci, bl);
 		rooms.push_back(room);
-		return room;
+		return std::move(room);
 	}
 
 	// prune expired rooms
@@ -72,11 +72,11 @@ std::shared_ptr<ServerRoom> ServerAcceptor::GetAvailableRoom()
 		return tmpPtr->GetPlayersNumber() < tmpPtr->GetMaxPlayers();
 	});
 	if(search != rooms.end())
-		return search->lock();
+		return std::move(search->lock());
 
 	auto room = std::make_shared<ServerRoom>(dbm, ci, bl);
 	rooms.push_back(room);
-	return room;
+	return std::move(room);
 }
 
 void ServerAcceptor::DoSignalWait()
@@ -91,7 +91,7 @@ void ServerAcceptor::DoAccept()
 {
 	acceptor.async_accept(tmpSocket, [this](std::error_code ec)
 	{
-		if(!acceptor.is_open())
+		if(!acceptor.is_open()) // TODO: check if this is needed
 			return;
 
 		if(!ec)
