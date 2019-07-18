@@ -663,7 +663,7 @@ void TeamDuelObserver::HandleAfterMsgQueries(void* buffer, size_t length)
 			
 			if(currentLocation == 0)
 				return;
-			if(currentLocation == LocationOverlay)
+			if((currentLocation & LocationOverlay) != 0)
 				return;
 			if(currentLocation == previousLocation && currentControler == previousControler)
 				return;
