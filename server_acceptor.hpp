@@ -27,8 +27,8 @@ class ServerAcceptor
 	CoreInterface ci;
 	Banlist bl;
 	
-	const bool LoadDatabases();
-	const bool LoadBanlist();
+	bool LoadDatabases();
+	bool LoadBanlist();
 
 	std::vector<std::weak_ptr<ServerRoom>> rooms;
 

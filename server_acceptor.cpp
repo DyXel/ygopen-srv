@@ -11,7 +11,7 @@ namespace YGOpen
 namespace Legacy
 {
 
-const bool ServerAcceptor::LoadDatabases()
+bool ServerAcceptor::LoadDatabases()
 {
 	try
 	{
@@ -33,7 +33,7 @@ const bool ServerAcceptor::LoadDatabases()
 	return true;
 }
 
-const bool ServerAcceptor::LoadBanlist()
+bool ServerAcceptor::LoadBanlist()
 {
 	try
 	{

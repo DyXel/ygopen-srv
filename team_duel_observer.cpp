@@ -117,12 +117,12 @@ void TeamDuelObserver::Deinitialize()
 	duel.reset();
 }
 
-const bool TeamDuelObserver::IsReponseFlagSet() const
+bool TeamDuelObserver::IsReponseFlagSet() const
 {
 	return responseFlag;
 }
 
-const bool TeamDuelObserver::IsMsgForThisTeam(void* buffer, size_t length)
+bool TeamDuelObserver::IsMsgForThisTeam(void* buffer, size_t length)
 {
 	BufferManipulator bm(buffer, length);
 	const auto msgType = (CoreMessage)bm.Read<uint8_t>();
@@ -171,7 +171,7 @@ const bool TeamDuelObserver::IsMsgForThisTeam(void* buffer, size_t length)
 	return true;
 }
 
-const bool TeamDuelObserver::IsCardPublic(const uint8_t location, const uint32_t position) const
+bool TeamDuelObserver::IsCardPublic(const uint8_t location, const uint32_t position) const
 {
 	if(location & (LocationGraveyard + LocationOverlay) && !(location & (LocationMainDeck + LocationHand)))
 		return true;
@@ -180,7 +180,7 @@ const bool TeamDuelObserver::IsCardPublic(const uint8_t location, const uint32_t
 	return false;
 }
 
-const bool TeamDuelObserver::StripMessageKnowledge(void* buffer, size_t length, std::string& newMsg)
+bool TeamDuelObserver::StripMessageKnowledge(void* buffer, size_t length, std::string& newMsg) const
 {
 	newMsg.reserve((size_t)length);
 	std::memcpy(&newMsg[0], buffer, length);
@@ -302,7 +302,7 @@ const bool TeamDuelObserver::StripMessageKnowledge(void* buffer, size_t length, 
 	return true;
 }
 
-const bool TeamDuelObserver::StripQueryKnowledge(void* buffer, size_t length, std::string& newMsg)
+bool TeamDuelObserver::StripQueryKnowledge(void* buffer, size_t length, std::string& newMsg) const
 {
 	newMsg.reserve(length);
 	std::memcpy(&newMsg[0], buffer, length);
