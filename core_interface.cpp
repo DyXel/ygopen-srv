@@ -8,6 +8,8 @@ namespace YGOpen
 //TODO: Use a DEFINE macro on premake instead, and fallback to these values
 #ifdef _WIN32
 static const char* DEFAULT_CORE_NAME = "ocgcore.dll";
+#elif defined __APPLE__
+static const char* DEFAULT_CORE_NAME = "./libocgcore.dylib";
 #else
 static const char* DEFAULT_CORE_NAME = "./libygopen-core.so";
 #endif
