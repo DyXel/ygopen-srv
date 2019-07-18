@@ -38,7 +38,7 @@ project(project_name)
 	staticruntime "on"
 
 	filter("system:not windows")
-		buildoptions({"-pedantic", "--std=c++11"})
+		buildoptions({"-pedantic", "--std=c++17"})
 		links({"dl", "pthread", "sqlite3"})
 
 local function vcpkgStaticTriplet(prj)
