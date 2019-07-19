@@ -23,10 +23,10 @@ class TeamDuelObserver : public DuelObserver
 	std::map<int, std::shared_ptr<ServerRoomClient>> players;
 
 	// Knowledge handling helper functions
-	const bool IsCardPublic(const uint8_t location, const uint32_t position) const;
-	const bool IsMsgForThisTeam(void* buffer, size_t length);
-	const bool StripMessageKnowledge(void* buffer, size_t length, std::string& newMsg);
-	const bool StripQueryKnowledge(void* buffer, size_t length, std::string& newMsg);
+	bool IsCardPublic(const uint8_t location, const uint32_t position) const;
+	bool IsMsgForThisTeam(void* buffer, size_t length);
+	bool StripMessageKnowledge(void* buffer, size_t length, std::string& newMsg) const;
+	bool StripQueryKnowledge(void* buffer, size_t length, std::string& newMsg) const;
 
 	// These functions handle queries sending. Queries are optional
 	// information that can be retrieved from the core to be sent to the
@@ -55,7 +55,7 @@ public:
 
 	void Deinitialize();
 
-	const bool IsReponseFlagSet() const;
+	bool IsReponseFlagSet() const;
 };
 
 } // namespace Legacy

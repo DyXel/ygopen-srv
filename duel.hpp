@@ -1,5 +1,6 @@
 #ifndef __DUEL_HPP__
 #define __DUEL_HPP__
+#include <string>
 #include <vector>
 #include <utility>
 
