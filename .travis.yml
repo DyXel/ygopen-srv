@@ -1,0 +1,94 @@
+language: cpp
+sudo: required
+dist: xenial
+git:
+  depth: 1
+env:
+  global:
+  - BUILD_CONFIG=release
+  - MSBUILD_PATH="/c/Program Files (x86)/Microsoft Visual Studio/2017/BuildTools/MSBuild/15.0/Bin"
+addons:
+  apt:
+    update: true
+    sources:
+    - ubuntu-toolchain-r-test
+    packages:
+    - g++-9
+    - libasio-dev
+    - libsqlite3-dev 
+  homebrew:
+    update: true
+    packages:
+    - asio
+    - nlohmann-json
+    - sqlite 
+matrix:
+  include:
+  - os: windows
+  - os: osx
+    osx_image: xcode10.2
+  - os: linux
+    compiler: gcc  
+    env: MATRIX_EVAL="CC=gcc-9 && CXX=g++-9"  
+before_install:
+- if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then 
+    curl --retry 5 --connect-timeout 30 --location --remote-header-name --remote-name https://github.com/premake/premake-core/releases/download/v5.0.0-alpha14/premake-5.0.0-alpha14-windows.zip;
+    unzip -uo premake-5.0.0-alpha14-windows.zip;
+    rm premake-5.0.0-alpha14-windows.zip;
+  else 
+    if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
+      curl --retry 5 --connect-timeout 30 --location --remote-header-name --output premake.tar.gz https://github.com/premake/premake-core/releases/download/v5.0.0-alpha14/premake-5.0.0-alpha14-macosx.tar.gz;
+    else
+      curl --retry 5 --connect-timeout 30 --location --remote-header-name --output premake.tar.gz https://github.com/premake/premake-core/releases/download/v5.0.0-alpha14/premake-5.0.0-alpha14-linux.tar.gz;
+    fi;
+    tar xf premake.tar.gz;
+    rm premake.tar.gz;
+  fi  
+install:
+- if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then 
+    export VCPKG_ROOT=/c/vcpkg;
+    git clone --depth=1 https://github.com/Microsoft/vcpkg.git $VCPKG_ROOT;
+    cd $VCPKG_ROOT;
+    curl --retry 5 --connect-timeout 30 --location --remote-header-name --remote-name https://github.com/kevinlul/ygopen-vcpkg-cache/raw/master/installed-legacy-srv.zip;
+    unzip -uo installed-legacy-srv.zip;
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "& '.\bootstrap-vcpkg.bat'";
+    ./vcpkg.exe integrate install;
+    ./vcpkg.exe install --triplet x86-windows-static asio nlohmann-json sqlite3;
+    cd -;
+  fi
+- if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then 
+    curl --retry 5 --connect-timeout 30 --location --remote-header-name --remote-name https://raw.githubusercontent.com/nlohmann/json/develop/single_include/nlohmann/json.hpp;
+    sudo mkdir -p /usr/local/include/nlohmann;
+    sudo mv json.hpp /usr/local/include/nlohmann;
+  fi 
+script:
+- if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then
+    ./premake5 vs2017;
+    "$MSBUILD_PATH/msbuild.exe" -m -p:Configuration=$BUILD_CONFIG ./build/ygopen-srv.sln;
+  else
+    ./premake5 gmake2;
+    make -Cbuild config=$BUILD_CONFIG;
+  fi
+before_deploy:
+- if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then
+    cp bin/$BUILD_CONFIG/ygopen-srv.exe ygopen-srv.exe;
+  else
+    cp bin/$BUILD_CONFIG/ygopen-srv ygopen-srv-$TRAVIS_OS_NAME;
+  fi
+deploy:
+- provider: releases
+  api_key: $OAUTH_TOKEN
+  file:
+  - ygopen-srv.exe
+  - ygopen-srv-$TRAVIS_OS_NAME
+  skip_cleanup: true
+  draft: true
+  overwrite: true
+- provider: releases
+  api_key: $OAUTH_TOKEN
+  file:
+  - ygopen-srv.exe
+  - ygopen-srv-$TRAVIS_OS_NAME
+  skip_cleanup: true
+  on:
+    tags: true
