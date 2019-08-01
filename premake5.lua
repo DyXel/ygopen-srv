@@ -1,8 +1,8 @@
 local project_name = "ygopen-srv"
 
 workspace(project_name)
-	location("build")
 	language("C++")
+	location("build")
 	objdir("obj")
 
 	configurations({"Debug", "Release"})
@@ -30,15 +30,19 @@ workspace(project_name)
 	filter("system:windows")
 		defines { "WIN32", "_WIN32", "NOMINMAX" }
 
+	filter("system:macosx")
+		includedirs "/usr/local/include"
+
 project(project_name)
 	kind("ConsoleApp")
 	warnings("Extra")
 	defines("ASIO_STANDALONE")
 	files({"**.hpp", "**.cpp"})
 	staticruntime "on"
-
+	cppdialect "C++17"
+	
 	filter("system:not windows")
-		buildoptions({"-pedantic", "--std=c++17"})
+		buildoptions({"-pedantic"})
 		links({"dl", "pthread", "sqlite3"})
 
 local function vcpkgStaticTriplet(prj)
