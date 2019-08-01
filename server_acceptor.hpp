@@ -27,7 +27,7 @@ class ServerAcceptor
 	CoreInterface ci;
 	Banlist bl;
 	
-	bool LoadDatabases();
+	bool LoadDatabases(std::vector<std::string>& databases);
 	bool LoadBanlist();
 
 	std::vector<std::weak_ptr<ServerRoom>> rooms;
@@ -37,7 +37,7 @@ class ServerAcceptor
 	void DoSignalWait();
 	void DoAccept();
 public:
-	ServerAcceptor(asio::io_service& ioService, asio::ip::tcp::endpoint& endpoint);
+	ServerAcceptor(asio::io_service& ioService, asio::ip::tcp::endpoint& endpoint, std::vector<std::string>& databases, std::vector<std::string>& banlists);
 	~ServerAcceptor();
 };
 

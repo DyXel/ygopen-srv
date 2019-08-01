@@ -11,22 +11,16 @@ namespace YGOpen
 namespace Legacy
 {
 
-bool ServerAcceptor::LoadDatabases()
+bool ServerAcceptor::LoadDatabases(std::vector<std::string>& databases)
 {
 	try
 	{
-		std::ifstream f("config/databases.json");
-		nlohmann::json j;
-		f >> j;
-		std::vector<std::string> v;
-
-		v = j.at("databases").get<std::vector<std::string>>();
-		for(std::string& s : v)
+		for(auto& s : databases)
 			dbm.LoadDatabase(s.c_str());
 	}
 	catch(std::exception& e)
 	{
-		std::cout << "Exception ocurred: " << e.what() << std::endl;
+		std::cout << "Exception occurred: " << e.what() << std::endl;
 		return false;
 	}
 	
@@ -45,38 +39,33 @@ bool ServerAcceptor::LoadBanlist()
 	}
 	catch(std::exception& e)
 	{
-		std::cout << "Exception ocurred: " << e.what() << std::endl;
+		std::cout << "Exception occurred: " << e.what() << std::endl;
 		return false;
 	}
 }
 
 std::shared_ptr<ServerRoom> ServerAcceptor::GetAvailableRoom()
 {
-	if(rooms.empty())
+	if (!rooms.empty())
 	{
-		auto room = std::make_shared<ServerRoom>(dbm, ci, bl);
-		rooms.push_back(room);
-		return std::move(room);
+		// prune expired rooms
+		rooms.erase(std::remove_if(rooms.begin(), rooms.end(), [](std::weak_ptr<ServerRoom> &room) -> bool {
+						return room.expired();
+					}),
+					rooms.end());
+
+		// search for room and return that if found
+		auto search = std::find_if(rooms.begin(), rooms.end(), [](std::weak_ptr<ServerRoom> &room) -> bool {
+			auto tmpPtr = room.lock();
+			return tmpPtr->GetPlayersNumber() < tmpPtr->GetMaxPlayers();
+		});
+		if (search != rooms.end())
+			return std::move(search->lock());
 	}
-
-	// prune expired rooms
-	rooms.erase(std::remove_if(rooms.begin(), rooms.end(), [](std::weak_ptr<ServerRoom>& room) -> bool
-	{
-		return room.expired();
-	}), rooms.end());
-
-	// search for room and return that if found
-	auto search = std::find_if(rooms.begin(), rooms.end(), [](std::weak_ptr<ServerRoom>& room) -> bool
-	{
-		auto tmpPtr = room.lock();
-		return tmpPtr->GetPlayersNumber() < tmpPtr->GetMaxPlayers();
-	});
-	if(search != rooms.end())
-		return std::move(search->lock());
 
 	auto room = std::make_shared<ServerRoom>(dbm, ci, bl);
 	rooms.push_back(room);
-	return std::move(room);
+	return room;
 }
 
 void ServerAcceptor::DoSignalWait()
@@ -104,7 +93,7 @@ void ServerAcceptor::DoAccept()
 	});
 }
 
-ServerAcceptor::ServerAcceptor(asio::io_service& ioService, asio::ip::tcp::endpoint& endpoint) :
+ServerAcceptor::ServerAcceptor(asio::io_service& ioService, asio::ip::tcp::endpoint& endpoint, std::vector<std::string>& databases, std::vector<std::string>& banlists) :
 	signals(ioService),
 	acceptor(ioService, endpoint),
 	tmpSocket(ioService),
@@ -123,7 +112,7 @@ ServerAcceptor::ServerAcceptor(asio::io_service& ioService, asio::ip::tcp::endpo
 	CoreAuxiliary::SetCore(&ci);
 	CoreAuxiliary::SetDatabaseManager(&dbm);
 	
-	if(!LoadDatabases())
+	if(!LoadDatabases(databases))
 	{
 		acceptor.close();
 		ioService.stop();
