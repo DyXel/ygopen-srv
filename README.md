@@ -31,3 +31,9 @@ On Linux, do `./premake5 gmake2 && make -Cbuild` for a debug build. Specify `con
 On Windows, do `./premake5.exe vs2017` or `./premake5.exe vs2019` to create the solution files and then build from the generated Visual Studio `.sln` file in `build`.
 
 On macOS, do `./premake5 gmake2 && make -Cbuild CXX=g++-9` for a GCC debug build, assuming you installed GCC with brew.
+
+## Legal
+
+This project is released under the GNU Affero General Public License 3.0. The EDOPro core script engine is released under the MIT License. 
+
+Yu-Gi-Oh! is a trademark of Shueisha and Konami. The YGOpen project is not affiliated or endorsed by Shueisha or Konami.
