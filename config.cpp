@@ -8,15 +8,15 @@ namespace Legacy
 
 namespace ServerConfig {
 
-nlohmann::json read_config(std::string filename) {
+nlohmann::json Get(std::string filename) {
 	std::ifstream config_file(filename);
 	nlohmann::json config = nlohmann::json::parse(config_file);
 	return config;
 }
 
-nlohmann::json get_or_default(std::string filename) {
+nlohmann::json GetOrDefault(std::string filename) {
 	if (std::filesystem::exists(filename)) {
-		return read_config(filename);
+		return Get(filename);
 	}
 	else {
 		std::ofstream config_file(filename);
@@ -25,7 +25,7 @@ nlohmann::json get_or_default(std::string filename) {
 	}
 }
 
-std::shared_ptr<std::vector<std::string>> expand_directories(nlohmann::json j) {
+std::shared_ptr<std::vector<std::string>> ExpandDirectories(nlohmann::json j) {
 	const auto& array = j.get<std::vector<std::string>>();
 	auto result = std::make_shared<std::vector<std::string>>();
 	for (const auto& str : array) {
