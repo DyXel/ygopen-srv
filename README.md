@@ -9,7 +9,7 @@ The YGOpen project aims to create a free-as-in-freedom, cleanly-engineered Yu-Gi
 - Platform C++ toolchain
   - Windows: [Visual Studio](https://visualstudio.microsoft.com/)
   - macOS: GCC (Clang does NOT support C++14/C++17 standard library)
-  - Linux: GCC or Clang
+  - Linux: GCC 8+ or Clang 5+
 
 - On macOS, we use [Homebrew](https://brew.sh/) to get dependencies. Install `gcc` with `brew install gcc`
 - On Windows, set up [`vcpkg`](https://github.com/microsoft/vcpkg)
@@ -26,8 +26,8 @@ On macOS, install dependencies with `brew install asio nlohmann-json sqlite3`.
 
 ## Build
 
-On Linux, do `./premake5 gmake2 && make -Cbuild` for a debug build, or `make -Cbuild config=release` for a release build.
+On Linux, do `./premake5 gmake2 && make -Cbuild` for a debug build. Specify `config=release` for a release build and make sure to set your compiler with `CXX=`
 
 On Windows, do `./premake5.exe vs2017` or `./premake5.exe vs2019` to create the solution files and then build from the generated Visual Studio `.sln` file in `build`.
 
-On macOS, do `./premake5 gmake2 && make -Cbuild CC=gcc-9 CXX=g++-9` for a GCC debug build, assuming you installed GCC with brew.
+On macOS, do `./premake5 gmake2 && make -Cbuild CXX=g++-9` for a GCC debug build, assuming you installed GCC with brew.
