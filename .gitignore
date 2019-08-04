@@ -39,3 +39,6 @@ Makefile
 *.make
 # Ignore files created by kate
 *.kate-swp
+premake5
+premake5.exe
+.vscode/
