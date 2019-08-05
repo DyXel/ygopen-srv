@@ -11,7 +11,7 @@ namespace YGOpen
 namespace Legacy
 {
 
-bool ServerAcceptor::LoadDatabases(std::vector<std::string>& databases)
+bool ServerAcceptor::LoadDatabases(const std::vector<std::string>& databases)
 {
 	try
 	{
@@ -93,7 +93,7 @@ void ServerAcceptor::DoAccept()
 	});
 }
 
-ServerAcceptor::ServerAcceptor(asio::io_service& ioService, asio::ip::tcp::endpoint& endpoint, std::vector<std::string>& databases, std::vector<std::string>& banlists) :
+ServerAcceptor::ServerAcceptor(asio::io_service& ioService, asio::ip::tcp::endpoint& endpoint, const std::vector<std::string>& databases, const std::vector<std::string>& banlists) :
 	signals(ioService),
 	acceptor(ioService, endpoint),
 	tmpSocket(ioService),

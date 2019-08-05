@@ -22,12 +22,12 @@ const nlohmann::json DEFAULT_CONFIG = R"(
 	}
 )"_json;
 
-nlohmann::json Get(std::string filename);
+nlohmann::json Get(const std::string& filename);
 
-nlohmann::json GetOrDefault(std::string filename);
+nlohmann::json GetOrDefault(const std::string& filename);
 
 template<typename... T, typename = typename std::enable_if<std::conjunction<std::is_convertible<T, std::string>...>::value>::type> 
-	nlohmann::json GetOrDefault(std::string first, T const&... filename) {
+	nlohmann::json GetOrDefault(const std::string& first, T const&... filename) {
 	if(std::filesystem::exists(first)) {
 		return Get(first);
 	} else {
@@ -35,7 +35,7 @@ template<typename... T, typename = typename std::enable_if<std::conjunction<std:
 	}
 }
 
-std::shared_ptr<std::vector<std::string>> ExpandDirectories(nlohmann::json j);
+std::shared_ptr<std::vector<std::string>> ExpandDirectories(const nlohmann::json& j);
 
 } // namespace ServerConfig
 
