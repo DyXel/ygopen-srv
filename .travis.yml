@@ -1,6 +1,6 @@
 language: cpp
 sudo: required
-dist: xenial
+dist: bionic
 git:
   depth: 1
 env:
@@ -11,7 +11,7 @@ addons:
   apt:
     update: true
     sources:
-    - ubuntu-toolchain-r-test
+    - sourceline: 'ppa:ubuntu-toolchain-r/test'
     packages:
     - g++-9
     - libasio-dev
@@ -29,7 +29,9 @@ matrix:
     osx_image: xcode10.2
   - os: linux
     compiler: gcc  
-    env: MATRIX_EVAL="CC=gcc-9 && CXX=g++-9"  
+    env: 
+    - CC=gcc-9
+    - CXX=g++-9 
 before_install:
 - if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then 
     curl --retry 5 --connect-timeout 30 --location --remote-header-name --remote-name https://github.com/premake/premake-core/releases/download/v5.0.0-alpha14/premake-5.0.0-alpha14-windows.zip;
