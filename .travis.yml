@@ -24,17 +24,31 @@ addons:
     - sqlite 
 matrix:
   include:
-  - os: windows
-  - os: osx
-    osx_image: xcode10.2
-    compiler: gcc  
+  - name: "Windows 10"
+    os: windows
+    env:
+    - VCPKG_ROOT=/c/vcpkg
+    - VCPKG_DEFAULT_TRIPLET=x86-windows-static
+    - VCPKG_LIBS="asio nlohmann-json sqlite3"
+    - VCPKG_CACHE_ZIP_URL=https://github.com/kevinlul/ygopen-vcpkg-cache/raw/master/installed-legacy-srv.zip
+  - name: "Bionic LLVM/Clang"
+    os: linux
+    compiler: clang
     env: 
-    - CC=gcc-9
+    - CC=clang
+    - CXX=clang++
+  - name: "Bionic GCC"
+    os: linux
+    compiler: gcc
+    env: 
+    - CC=gcc-9 
     - CXX=g++-9
-  - os: linux
-    compiler: gcc  
+  - name: "macOS Mojave GCC"
+    os: osx
+    osx_image: xcode10.2
+    compiler: gcc
     env: 
-    - CC=gcc-9
+    - CC=gcc-9 
     - CXX=g++-9
 before_install:
 - if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then 
@@ -52,14 +66,13 @@ before_install:
   fi  
 install:
 - if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then 
-    export VCPKG_ROOT=/c/vcpkg;
     git clone --depth=1 https://github.com/Microsoft/vcpkg.git $VCPKG_ROOT;
     cd $VCPKG_ROOT;
-    curl --retry 5 --connect-timeout 30 --location --remote-header-name --remote-name https://github.com/kevinlul/ygopen-vcpkg-cache/raw/master/installed-legacy-srv.zip;
-    unzip -uo installed-legacy-srv.zip;
+    curl --retry 5 --connect-timeout 30 --location --remote-header-name --output installed.zip $VCPKG_CACHE_ZIP_URL;
+    unzip -uo installed.zip;
     powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "& '.\bootstrap-vcpkg.bat'";
     ./vcpkg.exe integrate install;
-    ./vcpkg.exe install --triplet x86-windows-static asio nlohmann-json sqlite3;
+    ./vcpkg.exe install $VCPKG_LIBS;
     cd -;
   fi
 - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then 
@@ -75,26 +88,3 @@ script:
     ./premake5 gmake2;
     make -Cbuild config=$BUILD_CONFIG;
   fi
-before_deploy:
-- if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then
-    cp bin/$BUILD_CONFIG/ygopen-srv.exe ygopen-srv.exe;
-  else
-    cp bin/$BUILD_CONFIG/ygopen-srv ygopen-srv-$TRAVIS_OS_NAME;
-  fi
-deploy:
-- provider: releases
-  api_key: $OAUTH_TOKEN
-  file:
-  - ygopen-srv.exe
-  - ygopen-srv-$TRAVIS_OS_NAME
-  skip_cleanup: true
-  draft: true
-  overwrite: true
-- provider: releases
-  api_key: $OAUTH_TOKEN
-  file:
-  - ygopen-srv.exe
-  - ygopen-srv-$TRAVIS_OS_NAME
-  skip_cleanup: true
-  on:
-    tags: true
