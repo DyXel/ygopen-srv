@@ -1,4 +1,4 @@
-# YGOpen Legacy Server
+# YGOpen Legacy Server [![Build Status](https://travis-ci.org/DyXel/ygopen-srv.svg?branch=master)](https://travis-ci.org/DyXel/ygopen-srv)
 
 The YGOpen project aims to create a free-as-in-freedom, cleanly-engineered Yu-Gi-Oh! Official Card Game simulator, complete with client and server support. This server supports [EDOPro](https://github.com/edo9300/ygopro) clients and dynamically links to [that core](https://github.com/edo9300/ygopro-core).
 

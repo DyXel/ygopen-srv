@@ -1,0 +1,90 @@
+language: cpp
+sudo: required
+dist: bionic
+git:
+  depth: 1
+env:
+  global:
+  - BUILD_CONFIG=release
+  - MSBUILD_PATH="/c/Program Files (x86)/Microsoft Visual Studio/2017/BuildTools/MSBuild/15.0/Bin"
+addons:
+  apt:
+    update: true
+    sources:
+    - sourceline: 'ppa:ubuntu-toolchain-r/test'
+    packages:
+    - g++-9
+    - libasio-dev
+    - libsqlite3-dev 
+  homebrew:
+    update: true
+    packages:
+    - asio
+    - nlohmann-json
+    - sqlite 
+matrix:
+  include:
+  - name: "Windows 10"
+    os: windows
+    env:
+    - VCPKG_ROOT=/c/vcpkg
+    - VCPKG_DEFAULT_TRIPLET=x86-windows-static
+    - VCPKG_LIBS="asio nlohmann-json sqlite3"
+    - VCPKG_CACHE_ZIP_URL=https://github.com/kevinlul/ygopen-vcpkg-cache/raw/master/installed-legacy-srv.zip
+  - name: "Bionic LLVM/Clang"
+    os: linux
+    compiler: clang
+    env: 
+    - CC=clang
+    - CXX=clang++
+  - name: "Bionic GCC"
+    os: linux
+    compiler: gcc
+    env: 
+    - CC=gcc-9 
+    - CXX=g++-9
+  - name: "macOS Mojave GCC"
+    os: osx
+    osx_image: xcode10.2
+    compiler: gcc
+    env: 
+    - CC=gcc-9 
+    - CXX=g++-9
+before_install:
+- if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then 
+    curl --retry 5 --connect-timeout 30 --location --remote-header-name --remote-name https://github.com/premake/premake-core/releases/download/v5.0.0-alpha14/premake-5.0.0-alpha14-windows.zip;
+    unzip -uo premake-5.0.0-alpha14-windows.zip;
+    rm premake-5.0.0-alpha14-windows.zip;
+  else 
+    if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
+      curl --retry 5 --connect-timeout 30 --location --remote-header-name --output premake.tar.gz https://github.com/premake/premake-core/releases/download/v5.0.0-alpha14/premake-5.0.0-alpha14-macosx.tar.gz;
+    else
+      curl --retry 5 --connect-timeout 30 --location --remote-header-name --output premake.tar.gz https://github.com/premake/premake-core/releases/download/v5.0.0-alpha14/premake-5.0.0-alpha14-linux.tar.gz;
+    fi;
+    tar xf premake.tar.gz;
+    rm premake.tar.gz;
+  fi  
+install:
+- if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then 
+    git clone --depth=1 https://github.com/Microsoft/vcpkg.git $VCPKG_ROOT;
+    cd $VCPKG_ROOT;
+    curl --retry 5 --connect-timeout 30 --location --remote-header-name --output installed.zip $VCPKG_CACHE_ZIP_URL;
+    unzip -uo installed.zip;
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "& '.\bootstrap-vcpkg.bat'";
+    ./vcpkg.exe integrate install;
+    ./vcpkg.exe install $VCPKG_LIBS;
+    cd -;
+  fi
+- if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then 
+    curl --retry 5 --connect-timeout 30 --location --remote-header-name --remote-name https://raw.githubusercontent.com/nlohmann/json/develop/single_include/nlohmann/json.hpp;
+    sudo mkdir -p /usr/local/include/nlohmann;
+    sudo mv json.hpp /usr/local/include/nlohmann;
+  fi 
+script:
+- if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then
+    ./premake5 vs2017;
+    "$MSBUILD_PATH/msbuild.exe" -m -p:Configuration=$BUILD_CONFIG ./build/ygopen-srv.sln;
+  else
+    ./premake5 gmake2;
+    make -Cbuild config=$BUILD_CONFIG;
+  fi
