@@ -14,6 +14,7 @@ const nlohmann::json DEFAULT_CONFIG = R"(
 	{
 		"protocol": "tcp4",
 		"port": 44444,
+		"coreBasename": "ocgcore",
 		"databases": [
 			"databases/cards.cdb",
 			"databases/cards-anime-vg-manga.cdb"

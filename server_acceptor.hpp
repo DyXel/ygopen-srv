@@ -37,7 +37,7 @@ class ServerAcceptor
 	void DoSignalWait();
 	void DoAccept();
 public:
-	ServerAcceptor(asio::io_service& ioService, asio::ip::tcp::endpoint& endpoint, const std::vector<std::string>& databases, const std::vector<std::string>& banlists);
+	ServerAcceptor(asio::io_service& ioService, asio::ip::tcp::endpoint& endpoint, const std::string& coreBasename, const std::vector<std::string>& databases, const std::vector<std::string>& banlists);
 	~ServerAcceptor();
 };
 

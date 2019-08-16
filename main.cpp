@@ -13,9 +13,10 @@ int main()
 		protocol = asio::ip::tcp::v6();
 	}
 	asio::ip::tcp::endpoint endpoint(protocol, static_cast<unsigned short>(config["port"]));
+	std::string coreBasename = config["coreBasename"];
 	std::shared_ptr<std::vector<std::string>> databases = YGOpen::Legacy::ServerConfig::ExpandDirectories(config["databases"]);
 	std::shared_ptr<std::vector<std::string>> banlists = YGOpen::Legacy::ServerConfig::ExpandDirectories(config["banlists"]);
-	YGOpen::Legacy::ServerAcceptor sa(ioService, endpoint, *databases, *banlists);
+	YGOpen::Legacy::ServerAcceptor sa(ioService, endpoint, coreBasename, *databases, *banlists);
 	
 	ioService.run();
 

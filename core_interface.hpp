@@ -15,9 +15,9 @@ class CoreInterface
 {
 public:
 	// Core loading
-	CoreInterface(bool Loadlibrary);
+	CoreInterface();
 	bool LoadCore(const char* path);
-	bool LoadCore();
+	bool LoadCore(const std::string& basename);
 	bool ReloadCore();
 
 	bool IsLibraryLoaded();
