@@ -1,19 +1,10 @@
 #include "core_interface.hpp"
 
 #include <cstdio>
+#include <filesystem>
 
 namespace YGOpen
 {
-
-//TODO: Use a DEFINE macro on premake instead, and fallback to these values
-#ifdef _WIN32
-static const char* DEFAULT_CORE_NAME = "ocgcore.dll";
-#elif defined __APPLE__
-static const char* DEFAULT_CORE_NAME = "./libocgcore.dylib";
-#else
-static const char* DEFAULT_CORE_NAME = "./libygopen-core.so";
-#endif
-
 
 // "Native" functions below modified from implementations found in SDL2 library
 // Author: Sam Lantinga <slouken@libsdl.org>
@@ -128,12 +119,10 @@ T CoreInterface::LoadFunction(void* handle, T* func, const char* name, bool unlo
 	return *func;
 }
 
-CoreInterface::CoreInterface(bool loadCore) :
+CoreInterface::CoreInterface() :
 	activeCorePath(""),
 	handle(nullptr)
 {
-	if(loadCore)
-		LoadCore();
 }
 
 bool CoreInterface::LoadCore(const char* path)
@@ -188,9 +177,16 @@ bool CoreInterface::LoadCore(const char* path)
 	return true;
 }
 
-bool CoreInterface::LoadCore()
+bool CoreInterface::LoadCore(const std::string& basename)
 {
-	return LoadCore(DEFAULT_CORE_NAME);
+	#ifdef _WIN32
+	std::string path = basename + ".dll";
+	#elif defined __APPLE__
+	std::string path = "lib" + basename + ".dylib";
+	#else
+	std::string path = "./lib" + basename + ".so";
+	#endif
+	return LoadCore(path.c_str());
 }
 
 bool CoreInterface::ReloadCore()

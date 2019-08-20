@@ -93,11 +93,11 @@ void ServerAcceptor::DoAccept()
 	});
 }
 
-ServerAcceptor::ServerAcceptor(asio::io_service& ioService, asio::ip::tcp::endpoint& endpoint, const std::vector<std::string>& databases, const std::vector<std::string>& banlists) :
+ServerAcceptor::ServerAcceptor(asio::io_service& ioService, asio::ip::tcp::endpoint& endpoint, const std::string& coreBasename, const std::vector<std::string>& databases, const std::vector<std::string>& banlists) :
 	signals(ioService),
 	acceptor(ioService, endpoint),
 	tmpSocket(ioService),
-	ci(false)
+	ci()
 {
 	signals.add(SIGINT);
 	signals.add(SIGTERM);
@@ -119,7 +119,7 @@ ServerAcceptor::ServerAcceptor(asio::io_service& ioService, asio::ip::tcp::endpo
 		return;
 	}
 
-	if(!ci.LoadCore())
+	if(!ci.LoadCore(coreBasename))
 	{
 		acceptor.close();
 		ioService.stop();
